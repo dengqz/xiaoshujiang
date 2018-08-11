@@ -1,11 +1,15 @@
 ---
 title: MyBatis使用
-tags: 新建,模板,小书匠
+tags: 学习,使用手册,MyBatis
 grammar_cjkRuby: true
 ---
 
 
-# 转义符
+# MyBatis中xml文件中的转义符
 |含义|符号|转义字符|
 |:----    |:---|:---
-| 大于号|>|\&lt;|
+| 大于号|>|\&gt;|
+|小于号|<|\&lt;|
+|和|&|\&amp;|
+|单引号|'|\&apos;|
+|双引号|"|\&quot;|
