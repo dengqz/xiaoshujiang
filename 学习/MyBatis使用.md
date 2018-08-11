@@ -13,3 +13,6 @@ grammar_cjkRuby: true
 |和|&|\&amp;|
 |单引号|'|\&apos;|
 |双引号|"|\&quot;|
+
+```xml
+```
