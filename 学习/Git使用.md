@@ -81,5 +81,6 @@ git [--version] [ -  help] [-C <path>] [-c <name> = <value>]
     <command> [<args>]
 ```
 
-git [--version] [-help][-C &lt;path&gt ]
+git  [-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]</br> 
+&nbsp;&nbsp;&nbsp;[--exec-path[=&lt;path&gt;]] [--html-path] [--man-path][--info-path] 
 
