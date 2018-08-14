@@ -114,6 +114,12 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 打印安装记录此版本Git的Info文件的路径并退出。
 
+**`-p`**
+**`--paginate`**
+
+如果标准输出是终端，则将所有输出传输到较少（或如果设置为$ PAGER）。这将覆盖pager.<cmd> 配置选项（请参阅下面的“配置机制”部分）。
+
+
 
 
 
