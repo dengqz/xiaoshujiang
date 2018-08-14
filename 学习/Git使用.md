@@ -74,6 +74,8 @@ git [-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]
 &nbsp;&nbsp;&nbsp;&nbsp;[--bare] [--git-dir = &lt;path&gt;] [ -  work-tree = &lt;path&gt;] [--namespace = &lt;name&gt;]
 &nbsp;&nbsp;&nbsp;&nbsp;[--super-prefix = &lt;path&gt;]  &lt;command&gt; [&lt;args&gt;]
 ### 描述
-
+Git是一个快速，可扩展的分布式版本控制系统，具有异常丰富的命令集，可提供高级操作和对内部的完全访问。
+### OPTIONS
+`**--version**`
 
 
