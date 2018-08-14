@@ -104,6 +104,16 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 **`--html-path`**
 
+打印路径，不带斜杠，安装Git的HTML文档并退出。
+
+**`--man-path`**
+
+打印manpath（请参阅参考资料man(1)）获取此版本Git的手册页并退出。
+
+**`--info-path`**
+
+打印安装记录此版本Git的Info文件的路径并退出。
+
 
 
 
