@@ -172,6 +172,26 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 按组列出命令。这是一个内部/实验选项，可能会在将来更改或删除。支持的组包括：builtins，parseopt（使用parse-options的内置命令），main（libexec目录中的所有命令），其他（其他所有命令$PATH都有git-前缀），list- <category>（请参阅命令中的类别 - list.txt），nohelpers（排除帮助程序命令），别名和配置（从配置变量completion.commands检索命令列表）
 
+## git高级命令
+### 主要命令
+#### git-add
+##### 名称
+git add
+##### 概要
+git add [--verbose | -v] [ -  dr-run | -n] [--force | -f] [--interactive | -i] [ - 补丁| -p]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[--edit | -e] [ -  [no-] all |  -  [no-] ignore-removal | [ - 更新| -u]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing] [--renormalize]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[--chmod =（+ |  - ）x] [ - ] [&lt;pathspec&gt; ...]
+##### 描述
+
+##### 选项
+### 辅助命令
+### 与他人互动
+## git低级命令
+### 操纵命令
+### 询问命令
+### 同步存储库
+### 内部帮助器命令
 
 
 
