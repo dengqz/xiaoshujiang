@@ -81,3 +81,5 @@ git [--version] [ -  help] [-C <path>] [-c <name> = <value>]
     <command> [<args>]
 ```
 
+git [--version]
+
