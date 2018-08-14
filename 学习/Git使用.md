@@ -81,6 +81,9 @@ git [--version] [ -  help] [-C <path>] [-c <name> = <value>]
     <command> [<args>]
 ```
 
-git  [-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]</br> 
+git  [-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]
 &nbsp;&nbsp;&nbsp;[--exec-path[=&lt;path&gt;]] [--html-path] [--man-path][--info-path] 
+&nbsp;&nbsp;&nbsp;[-p | --paginate | -P | --no-pager][ -no- replace-objects]
+&nbsp;&nbsp;&nbsp;[--bare] [--git-dir = &lt;path&gt;] [ -  work-tree = &lt;path&gt;] [--namespace = &lt;name&gt;]
+&nbsp;&nbsp;&nbsp;[--super-prefix = &lt;path&gt;]  &lt;command&gt; [&lt;args&gt;]
 
