@@ -72,6 +72,6 @@ git
 
 `概要`
 ------
-git  
+git  /[-version/]
    
 
