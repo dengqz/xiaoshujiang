@@ -119,6 +119,13 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 如果标准输出是终端，则将所有输出传输到较少（或如果设置为$ PAGER）。这将覆盖pager.<cmd> 配置选项（请参阅下面的“配置机制”部分）。
 
+**`-P`**
+**`--no-pager`**
+
+不要将Git输出传输到寻呼机。
+
+**`--git-dir=<path>`**
+
 
 
 
