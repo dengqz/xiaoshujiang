@@ -77,6 +77,9 @@ git [-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]
 Git是一个快速，可扩展的分布式版本控制系统，具有异常丰富的命令集，可提供高级操作和对内部的完全访问。
 ### OPTIONS
 **`--version`**
+
 打印git程序的Git套件版本信息
+
+**`--help`**
 
 
