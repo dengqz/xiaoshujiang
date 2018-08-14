@@ -126,6 +126,14 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 **`--git-dir=<path>`**
 
+设置存储库的路径。这也可以通过设置GIT_DIR环境变量来控制。它可以是当前工作目录的绝对路径或相对路径。
+
+**`--work-tree=<path>`**
+
+设置工作树的路径。它可以是绝对路径或相对于当前工作目录的路径。这也可以通过设置GIT_WORK_TREE环境变量和core.worktree配置变量来控制（有关更详细的讨论，请参阅git-config（1）中的core.worktree ）。
+
+**`--namespace=<path>`**
+
 
 
 
