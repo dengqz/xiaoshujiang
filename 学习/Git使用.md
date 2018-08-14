@@ -134,6 +134,43 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 **`--namespace=<path>`**
 
+设置Git名称空间。有关更多详细信息，请参阅gitnamespaces（7）。相当于设置GIT_NAMESPACE环境变量。
+
+**`--super-prefix=<path>`**
+
+目前仅供内部使用。设置一个前缀，该前缀提供从存储库上方到其根目录的路径。一个用途是给出调用它的超级项目的子模块上下文。
+
+**`--bare`**
+
+将存储库视为裸存储库。如果未设置GIT_DIR环境，则将其设置为当前工作目录。
+
+**`--no-replace-objects`**
+
+不要使用替换refs来替换Git对象。有关更多信息，请参阅 git-replace（1）。
+
+**`--literal-pathspecs`**
+
+按字面意思处理pathspecs（即没有globbing，没有pathspec魔法）。这相当于将GIT_LITERAL_PATHSPECS环境变量设置为1。
+
+**`--glob-pathspecs`**
+
+为所有pathspec添加“glob”魔法。这相当于将GIT_GLOB_PATHSPECS环境变量设置为1。可以使用pathspec magic“:( literal）”在各个pathspecs上禁用globbing
+
+**`--noglob-pathspecs`**
+
+为所有pathspec添加“literal”魔法。这相当于将GIT_NOGLOB_PATHSPECS环境变量设置为1。可以使用pathspec magic“:( glob）”在各个pathspec上启用globbing
+
+**`--icase-pathspecs`**
+
+为所有pathspec添加“icase”魔法。这相当于将GIT_ICASE_PATHSPECS环境变量设置为1。
+
+**`--no-optional-locks`**
+
+不要执行需要锁定的可选操作。这相当于设置GIT_OPTIONAL_LOCKS为0。
+
+**`--list-cmds=group[,group…]`**
+
+按组列出命令。这是一个内部/实验选项，可能会在将来更改或删除。支持的组包括：builtins，parseopt（使用parse-options的内置命令），main（libexec目录中的所有命令），其他（其他所有命令$PATH都有git-前缀），list- <category>（请参阅命令中的类别 - list.txt），nohelpers（排除帮助程序命令），别名和配置（从配置变量completion.commands检索命令列表）
 
 
 
