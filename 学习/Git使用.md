@@ -68,7 +68,7 @@ Git是通常用于开源和商业软件开发的分布式版本控制系统（DV
 ### 名称
 git
 ### 概要
-git&nbsp;[-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]
+git [-- version]  [- help] [-C &lt;path&gt; ]  [-c &lt;name&gt; = &lt;value&gt;]
 &nbsp;&nbsp;&nbsp;&nbsp;[--exec-path[=&lt;path&gt;]] [--html-path] [--man-path] [--info-path] 
 &nbsp;&nbsp;&nbsp;&nbsp;[-p | --paginate | -P | --no-pager] [ -no- replace-objects]
 &nbsp;&nbsp;&nbsp;&nbsp;[--bare] [--git-dir = &lt;path&gt;] [ -  work-tree = &lt;path&gt;] [--namespace = &lt;name&gt;]
