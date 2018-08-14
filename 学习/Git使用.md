@@ -175,14 +175,14 @@ git --git-dir=c/a.git --work-tree=c/b status
 ## git高级命令
 ### 主要命令
 #### git-add
-##### 名称
+**名称**
 git add
-##### 概要
+** 概要**
 git add [--verbose | -v] [ -  dr-run | -n] [--force | -f] [--interactive | -i] [ - 补丁| -p]
 &nbsp;&nbsp;&nbsp;[--edit | -e] [ -  [no-] all |  -  [no-] ignore-removal | [ - 更新| -u]
 &nbsp;&nbsp;&nbsp;[--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing] [--renormalize]
 &nbsp;&nbsp;&nbsp;[--chmod =（+ |  - ）x] [ - ] [&lt;pathspec&gt; ...]
-##### 描述
+** 描述**
 此命令使用工作树中找到的当前内容更新索引，以准备为下次提交暂存的内容。它通常会添加现有路径的当前内容作为一个整体，但是通过一些选项，它还可以用于添加仅对应用的工作树文件所做的部分更改的内容，或者删除工作树中不存在的路径了。
 
 “index”保存工作树内容的快照，并将此快照作为下一次提交的内容。因此，在对工作树进行任何更改之后，在运行commit命令之前，必须使用该add命令将任何新的或已修改的文件添加到索引中。
@@ -193,7 +193,7 @@ git add [--verbose | -v] [ -  dr-run | -n] [--force | -f] [--interactive | -i] [
 
 git add默认情况下，该命令不会添加被忽略的文件。如果在命令行上显式指定了任何被忽略的文件，git add 则将失败并显示一个被忽略的文件列表。由Git执行的目录递归或文件名通配所达到的忽略文件（在shell之前引用你的globs）将被默默忽略。在git的添加命令可以用来添加与被忽略的文件-f（强制）选项。
 
-##### 选项
+** ==选项==**
 **`<pathspec>…`**
 
 要添加内容的文件。*.c可以给Fileglobs（例如）添加所有匹配的文件。还可以给出一个主要目录名称（例如dir添加dir/file1 和dir/file2）以更新索引以匹配整个目录的当前状态（例如，指定dir将不仅记录dir/file1 在工作树中修改的文件，dir/file2添加到工作的文件树，但也dir/file3从工作树中删除了一个文件。请注意，旧版本的Git用于忽略已删除的文件; --no-all如果要添加已修改或新文件但忽略已删除的文件，请使用选项。
