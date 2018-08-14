@@ -98,4 +98,13 @@ git --git-dir=c/a.git --work-tree=c/b status
 
 将配置参数传递给命令。给定的值将覆盖配置文件中的值。<name>的格式与git config列出的格式相同 （以点分隔的子键）。
 
+**`--exec-path[=<path>]`**
+
+安装核心Git程序的路径。这也可以通过设置GIT_EXEC_PATH环境变量来控制。如果没有给出路径，git将打印当前设置然后退出。
+
+**`--html-path`**
+
+
+
+
 
