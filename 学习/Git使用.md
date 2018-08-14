@@ -179,9 +179,9 @@ git --git-dir=c/a.git --work-tree=c/b status
 git add
 ##### 概要
 git add [--verbose | -v] [ -  dr-run | -n] [--force | -f] [--interactive | -i] [ - 补丁| -p]
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[--edit | -e] [ -  [no-] all |  -  [no-] ignore-removal | [ - 更新| -u]
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing] [--renormalize]
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[--chmod =（+ |  - ）x] [ - ] [&lt;pathspec&gt; ...]
+&nbsp;&nbsp;&nbsp;[--edit | -e] [ -  [no-] all |  -  [no-] ignore-removal | [ - 更新| -u]
+&nbsp;&nbsp;&nbsp;[--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing] [--renormalize]
+&nbsp;&nbsp;&nbsp;[--chmod =（+ |  - ）x] [ - ] [&lt;pathspec&gt; ...]
 ##### 描述
 
 ##### 选项
