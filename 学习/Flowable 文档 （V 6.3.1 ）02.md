@@ -109,5 +109,27 @@ public class HolidayRequest {
 
 ![enter description here](./images/1535458711261_1.png)
 
+Flowable在内部使用SLF4J作为其日志框架。对于此示例，我们将在SLF4j上使用log4j记录器，因此将以下依赖项添加到pom.xml文件中：
 
+```xml?linenums
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>slf4j-api</artifactId>
+  <version>1.7.21</version>
+</dependency>
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>slf4j-log4j12</artifactId>
+  <version>1.7.21</version>
+</dependency>
+```
+Log4j需要一个属性文件进行配置。使用以下内容将log4j.properties文件添加到src / main / resources文件夹：
+
+```
+log4j.rootLogger = DEBUG，CA
+
+log4j.appender.CA = org.apache.log4j.ConsoleAppender
+log4j.appender.CA.layout = org.apache.log4j.PatternLayout
+log4j.appender.CA.layout.ConversionPattern =％d {hh：mm：ss，SSS} [％t]％-5p％c％x  - ％m％n
+```
 ## 2.4. Flowable REST API入门
