@@ -125,7 +125,7 @@ Flowable在内部使用SLF4J作为其日志框架。对于此示例，我们将�
 ```
 Log4j需要一个属性文件进行配置。使用以下内容将log4j.properties文件添加到src / main / resources文件夹：
 
-```
+```xml?linenums
 log4j.rootLogger = DEBUG，CA
 
 log4j.appender.CA = org.apache.log4j.ConsoleAppender
