@@ -30,15 +30,15 @@ Flowable是Activiti（Alfresco的注册商标）的一个分支。在以下所�
  
  首先，我们通过File→New→Other→Maven Project创建一个新的Maven项目
 
-![enter description here](./images/1535458711260.png)
+![enter description here](./images/1535512648411.png)
 
 在下一个屏幕中，我们检查创建一个简单的项目（跳过原型选择）
 
-![enter description here](./images/1535458711261.png)
+![enter description here](./images/1535512648413.png)
 
 并填写一些'Group Id'和'Artifact id'：
 
-![enter description here](./images/1535458711590.png)
+![enter description here](./images/1535512648941.png)
 
 我们现在有一个空的Maven项目，我们将添加两个依赖项：
 
@@ -103,11 +103,11 @@ public class HolidayRequest {
 
 你现在可以运行它。Eclipse中最简单的方法是右键单击类文件并选择Run As→Java Application：
 
-![enter description here](./images/1535458711594.png)
+![enter description here](./images/1535512648941_1.png)
 
 应用程序运行没有问题，但是，除了显示未正确配置日志记录的消息之外，控制台中不显示任何有用信息：
 
-![enter description here](./images/1535458711261_1.png)
+![enter description here](./images/1535512648413_1.png)
 
 Flowable在内部使用SLF4J作为其日志框架。对于此示例，我们将在SLF4j上使用log4j记录器，因此将以下依赖项添加到pom.xml文件中：
 
@@ -135,7 +135,7 @@ log4j.appender.CA.layout.ConversionPattern =％d {hh：mm：ss，SSS} [％t]％-
 
 重新运行该应用程序。您现在应该看到有关引擎启动的信息性日志记录以及在数据库中创建的数据库模式：
 
-![enter description here](./images/getting.started.console.logging2.png)
+![enter description here](./images/1535512648938.png)
 
 ### 2.3.2. 部署流程定义
 
@@ -145,7 +145,7 @@ BPMN 2.0存储为XML，但它也有一个可视化部分：它以标准方式定
 
 我们将使用的流程定义如下：
 
-![enter description here](./images/getting.started.bpmn.process.png)
+![enter description here](./images/1535512648433.png)
 
 这个过程应该是不言自明的，但为了清楚起见，让我们描述不同的位：
 
@@ -327,7 +327,7 @@ System.out.println(processVariables.get("employee") + " wants " +
 ```
 如果你运行它，应该看起来像这样：
 
-![enter description here](./images/getting.started.console.logging3.png)
+![enter description here](./images/1535512648581.png)
 
 经理现在可以完成任务。实际上，这通常意味着用户提交表单。然后将表单中的数据作为流程变量传递。在这里，我们将通过传递带有已批准变量的地图来模仿这一点（名称很重要，因为稍后在序列流的条件中使用它！）当任务完成时：
 ```java?linenums
@@ -368,7 +368,7 @@ public class CallExternalSystemDelegate implements JavaDelegate {
 
 现在运行示例时，将显示日志记录消息，说明自定义逻辑确实已执行：
 
-![enter description here](./images/getting.started.console.logging4.png)
+![enter description here](./images/1535512648581_1.png)
 
 ### 2.3.7 使用历史数据
 选择使用Flowable等流程引擎的众多原因之一是它会自动存储所有流程实例的审计数据或历史数据。此数据允许创建丰富的报告，以深入了解组织的工作方式，瓶颈所在的位置等。
