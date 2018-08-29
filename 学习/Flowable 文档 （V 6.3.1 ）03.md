@@ -6,13 +6,13 @@ grammar_cjkRuby: true
 
 # 3.配置
 ## 3.1. 创建ProcessEngine
-Flowable流程引擎通过名为的XML文件配置flowable.cfg.xml。请注意，如果您使用Spring样式构建流程引擎，则不适用。
+Flowable流程引擎通过名为`flowable.cfg.xml`的XML文件配置。请注意这种方式与使用Spring创建流程引擎不一样。
 
-获得a的最简单方法ProcessEngine是使用org.flowable.engine.ProcessEngines该类：
+获取`ProcessEngine`，最简单的方式是使用`org.flowable.engine.ProcessEngines`类：
 ```java?linenums
 ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine()
 ```
-这将flowable.cfg.xml在类路径中查找文件，并根据该文件中的配置构造引擎。以下代码段显示了一个示例配置。以下部分将详细介绍配置属性。
+这样会从classpath寻找`flowable.cfg.xml`，并用这个文件中的配置构造引擎。下面的代码展示了一个配置的例子。后续章节会对配置参数进行详细介绍。
 ```xml?linenums
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -35,9 +35,9 @@ ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine()
 
 </beans>
 ```
-请注意，配置XML实际上是一个Spring配置。这并不意味着Flowable只能在Spring环境中使用！我们只是在内部利用Spring的解析和依赖注入功能来构建引擎。
+请注意这个配置XML文件实际上是一个Spring配置文件。但这并不意味着Flowable只能用于Spring环境！我们只是简单利用Spring内部的解析与依赖注入功能来构造引擎。
 
-ProcessEngineConfiguration对象也可以使用配置文件以编程方式创建。也可以使用不同的bean id（例如，参见第3行）。
+也可以通过编程方式使用配置文件，来构造ProcessEngineConfiguration对象。也可以使用不同的bean id(例如第3行)。
 ```java?linenums
 ProcessEngineConfiguration.
   createProcessEngineConfigurationFromResourceDefault();
@@ -46,12 +46,14 @@ ProcessEngineConfiguration.
   createProcessEngineConfigurationFromInputStream(InputStream inputStream);
   createProcessEngineConfigurationFromInputStream(InputStream inputStream, String beanName);
 ```
-也可以不使用配置文件，并根据默认值创建配置（有关更多信息，请参阅不同的受支持类）。
+也可以不使用配置文件，基于默认创建配置（参考不同的支持类获得更多信息）。
 ```java?linenums
 ProcessEngineConfiguration.createStandaloneProcessEngineConfiguration();
 ProcessEngineConfiguration.createStandaloneInMemProcessEngineConfiguration();
 ```
-如果需要，所有这些ProcessEngineConfiguration.createXXX()方法都返回ProcessEngineConfiguration可以进一步调整的方法。调用buildProcessEngine()操作后，ProcessEngine创建一个：
+所有的`ProcessEngineConfiguration.createXXX()`方法都返回`ProcessEngineConfiguration`，并可以继续按需调整。
+
+调用buildProcessEngine()后，生成一个ProcessEngine：
 ```java?linenums
 ProcessEngine processEngine = ProcessEngineConfiguration.createStandaloneInMemProcessEngineConfiguration()
   .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE)
@@ -60,41 +62,40 @@ ProcessEngine processEngine = ProcessEngineConfiguration.createStandaloneInMemPr
   .buildProcessEngine();
 ```
 ## 3.2. ProcessEngineConfiguration bean
-在flowable.cfg.xml必须包含有ID的Bean 'processEngineConfiguration'。
+`flowable.cfg.xml`文件中必须包含一个id为`processEngineConfiguration`的bean。
 ```xml?linenums
 <bean id="processEngineConfiguration" class="org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration">
 ```
-然后使用这个bean来构造ProcessEngine。有多个类可用于定义processEngineConfiguration。这些类表示不同的环境，并相应地设置默认值。最佳做法是选择最适合您环境的类，以最小化配置引擎所需的属性数。目前提供以下课程：
+这个bean用于构建ProcessEngine。有多个类可以用于定义processEngineConfiguration。这些类用于不同的环境，并各自设置一些默认值。最佳实践是选择最匹配你环境的类，以便减少配置引擎需要的参数。下面列出目前可以使用的类：
 
- - org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration：流程引擎以独立方式使用。Flowable将负责所有交易。默认情况下，仅在引擎引导时检查数据库（如果没有Flowable架构或架构版本不正确，则抛出异常）。
- - org.flowable.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration：这是一个用于单元测试的便利类。Flowable将负责所有交易。默认情况下使用H2内存数据库。引擎启动和关闭时将创建和删除数据库。使用此功能时，可能不需要其他配置（例如，使用作业执行程序或邮件功能时除外）。
- - org.flowable.spring.SpringProcessEngineConfiguration：在Spring环境中使用流程引擎时使用。有关更多信息，请参阅Spring集成部分。
- - org.flowable.engine.impl.cfg.JtaProcessEngineConfiguration：在引擎以独立模式运行时使用JTA事务。
+ - `org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration`：流程引擎独立运行。Flowable自行处理事务。在默认情况下，数据库检查只在引擎启动时进行（如果Flowable表结构不存在或表结构版本不对，会抛出异常）。
+ - `org.flowable.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration`：这是一个便于使用单元测试的类。Flowable自行处理事务。默认使用H2内存数据库。数据库会在引擎启动时创建，并在引擎关闭时删除。使用这个类时，很可能不需要更多的配置（除了使用任务执行器或邮件功能等时）。
+ - `org.flowable.spring.SpringProcessEngineConfiguration`：在流程引擎处于Spring环境时使用。查看Spring集成章节获得更多信息。
+ - `org.flowable.engine.impl.cfg.JtaProcessEngineConfiguration`：用于引擎独立运行，并使用JTA事务的情况。
  
  ## 3.3. 数据库配置
- 有两种方法可以配置Flowable引擎将使用的数据库。第一个选项是定义数据库的JDBC属性：
+ 有两种方式可以配置Flowable引擎使用的数据库。第一种方式是定义数据库的JDBC参数：
  
  - jdbcUrl：数据库的JDBC URL。
  - jdbcDriver：实现特定数据库类型的驱动程序。
- - jdbcDriver：实现特定数据库类型的驱动程序。
+ - jdbcUsername：用于连接数据库的用户名。
  - jdbcPassword：连接数据库的密码。
  
- 基于提供的JDBC属性构造的数据源将具有默认的MyBatis连接池设置。可以选择设置以下属性来调整该连接池（取自MyBatis文档）：
+ 通过提供的JDBC参数构造的数据源，使用默认的MyBatis连接池设置。可用下列属性调整这个连接池（来自MyBatis文档）：
  
- - jdbcMaxActiveConnections：任何时候连接池最多可以包含的活动连接数。默认值为10。
- - jdbcMaxIdleConnections：任何时候连接池最多可以包含的空闲连接数。
- - jdbcMaxCheckoutTime：在强制返回连接之前，可以从连接池中检出连接的时间量（以毫秒为单位）。默认值为20000（20秒）。
- - jdbcMaxWaitTime：这是一个低级别设置，它使池有机会打印日志状态，并在它花费异常时间的情况下重新尝试获取连接（以避免在池配置错误时永远无声地失败）默认值是20000（20秒）。
+ - jdbcMaxActiveConnections：连接池能够容纳的最大活动连接数量。默认值为10。
+ - jdbcMaxIdleConnections：连接池能够容纳的最大空闲连接数量。
+ - jdbcMaxCheckoutTime：连接从连接池“取出”后，被强制返回前的最大时间间隔，单位为毫秒。默认值为20000（20秒）。
+ - jdbcMaxWaitTime：这是一个底层设置，在连接池获取连接的时间异常长时，打印日志并尝试重新获取连接（避免连接池配置错误造成的永久沉默失败。默认值为20000（20秒）。
  
- 示例数据库配置：
- 
+ 数据库配置示例：
  ```xml?linenums
  <property name="jdbcUrl" value="jdbc:h2:mem:flowable;DB_CLOSE_DELAY=1000" />
 <property name="jdbcDriver" value="org.h2.Driver" />
 <property name="jdbcUsername" value="sa" />
 <property name="jdbcPassword" value="" />
  ```
- 我们的基准测试表明，在处理大量并发请求时，MyBatis连接池不是最有效或最有弹性的。因此，建议我们使用一个javax.sql.DataSource实现并将其注入流程引擎配置（例如HikariCP，Tomcat JDBC连接池等）：
+ 我们的跑分显示MyBatis连接池在处理大量并发请求时，并不是最经济或最具弹性的。因此，建议使用javax.sql.DataSource的实现，并将其注入到流程引擎配置中（例如DBCP、CP30、Hikari、Tomcat连接池，等等）：
  ```xml?linenums
  <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" >
   <property name="driverClassName" value="com.mysql.jdbc.Driver" />
@@ -109,24 +110,24 @@ ProcessEngine processEngine = ProcessEngineConfiguration.createStandaloneInMemPr
   <property name="dataSource" ref="dataSource" />
   ...
  ```
- 请注意，Flowable不附带允许您定义此类数据源的库。因此，您需要确保库位于类路径中。
+ 请注意Flowable发布时不包括用于定义数据源的库。需要自行把库放在你的classpath中。
 
-无论您使用的是JDBC还是数据源方法，都可以设置以下属性：
+无论使用JDBC还是数据源方式配置，下列参数都可以使用：
 
- - databaseType：通常不需要指定此属性，因为它是从数据库连接元数据中自动检测到的。只应在自动检测失败时指定。可能的值：{h2，mysql，oracle，postgres，mssql，db2}。此设置将确定将使用哪些创建/删除脚本和查询。请参阅该支持的数据库部分用于哪些类型支持的概述。
- - databaseSchemaUpdate：设置策略以在流程引擎启动和关闭时处理数据库模式。
-  - false （默认值）：在创建流程引擎时检查库模式的版本，如果版本不匹配则抛出异常。
-  - true：在构建流程引擎时，执行检查并在必要时执行模式更新。如果架构不存在，则创建它。
-  - create-drop：在创建流程引擎时创建架构，并在关闭流程引擎时删除架构。
+ - databaseType：通常不需要专门设置这个参数，因为它可以从数据库连接信息中自动检测得出。只有在自动检测失败时才需要设置。可用值：{h2, mysql, oracle, postgres, mssql, db2}。这个选项会决定创建、删除与查询时使用的脚本。查看“支持的数据库”章节了解我们支持哪些类型的数据库。
+ - databaseSchemaUpdate：用于设置流程引擎启动关闭时使用的数据库表结构控制策略。
+  - false （默认值）：当引擎启动时，检查数据库表结构的版本是否匹配库文件版本。版本不匹配时抛出异常。
+  - true：构建引擎时，检查并在需要时更新表结构。表结构不存在则会创建。
+  - create-drop：引擎创建时创建表结构，并在引擎关闭时删除表结构。
   
 ## 3.4. JNDI数据源配置
-默认情况下，Flowable的数据库配置包含在每个Web应用程序的WEB-INF / classes中的db.properties文件中。这并不总是理想的，因为它要求用户修改Flowable源中的db.properties并重新编译WAR文件，或者在每次部署时分解WAR并修改db.properties。
+默认情况下，Flowable的数据库配置保存在每个web应用WEB-INF/classes目录下的db.properties文件中。有时这样并不合适，因为这需要用户修改Flowable源码中的db.properties文件并重新编译war包，或者在部署后解开war包并修改db.properties文件。
 
-通过使用JNDI（Java命名和目录接口）获取数据库连接，连接完全由Servlet容器管理，并且可以在WAR部署之外管理配置。与db.properties文件提供的连接参数相比，这还允许更多地控制连接参数。
+通过使用JNDI（Java Naming and Directory Interface，Java命名和目录接口）获取数据库连接时，连接就完全由Servlet容器管理，并可以在war部署之外管理配置。同时也提供了比db.properties中更多的控制连接的参数。
 ### 3.4.1. 组态
-根据您使用的servlet容器应用程序，JNDI数据源的配置会有所不同。以下说明适用于Tomcat，但对于其他容器应用程序，请参阅容器应用程序的文档。
+根据你使用的servlet容器应用不同，配置JNDI数据源的方式也不同。下面的介绍用于Tomcat，对于其他容器应用，请参考对应的文档。
 
-如果使用Tomcat，所述JNDI资源被配置$ CATALINA_BASE内/ CONF / [引擎] / [主机名] / [warname] .XML（用于可流动UI这通常将是$ CATALINA_BASE / CONF /卡塔利娜/本地主机/可流动的应用内。 XML）。首次部署应用程序时，将从Flowable WAR文件复制默认上下文，因此如果已存在，则需要替换它。例如，要更改JNDI资源以便应用程序连接到MySQL而不是H2，请将文件更改为以下内容：
+Tomcat的JNDI资源配置在$CATALINA_BASE/conf/[enginename]/[hostname]/[warname].xml (对于Flowable UI通常会是$CATALINA_BASE/conf/Catalina/localhost/flowable-app.xml)。当应用第一次部署时，默认会从Flowable war包中复制context.xml。所以如果存在这个文件则需要替换。例如，如果需要将JNDI资源修改为应用连接MySQL而不是H2，按照下列修改文件：
 ```xml?linenums
 <?xml version="1.0" encoding="UTF-8"?>
     <Context antiJARLocking="true" path="/flowable-app">
@@ -146,16 +147,16 @@ ProcessEngine processEngine = ProcessEngineConfiguration.createStandaloneInMemPr
         </Context>
 ```
 ### 3.4.2. JNDI属性
-要配置JNDI数据源，请在Flowable UI的属性文件中使用以下属性：
+要配置JNDI数据源，在Flowable UI的配置文件中使用下列参数：
 
-- spring.datasource.jndi-name =：数据源的JNDI名称。
+- spring.datasource.jndi-name =：数据源的JNDI名。
 
-- datasource.jndi.resourceRef：设置是否在J2EE容器中进行查找，例如，如果JNDI名称尚未包含前缀，则需要添加前缀“java：comp / env /”。默认为“true”。
+- datasource.jndi.resourceRef：设置是否在J2EE容器中查找。也就是说，如果JNDI名中没有包含"java:comp/env/"前缀，是否需要添加它。默认为"true"。
 
 ## 3.5. 支持的数据库
-下面列出了Flowable用于引用数据库的类型（区分大小写！）。
+下面列出Flowable用于引用数据库的类型（区分大小写！）。
 
-|  数据库类型   |  示例JDBC URL   |  笔记   |
+|  数据库类型   |  示例JDBC URL   |  备注   |
 | :-- | :-- | :-- |
 |   h2  |  jdbc:h2:tcp://localhost/flowable   | Default configured database    |
 |  mysql   |  jdbc:mysql://localhost:3306/flowable?autoReconnect=true   |  Tested using mysql-connector-java database driver   |
@@ -165,11 +166,11 @@ ProcessEngine processEngine = ProcessEngineConfiguration.createStandaloneInMemPr
 |  mssql   |  jdbc:sqlserver://localhost:1433;<br>databaseName=flowable <br>(jdbc.driver=com.microsoft.sqlserver.jdbc.SQLServerDriver) <br>OR <br>jdbc:jtds:sqlserver://localhost:1433/flowable (jdbc.driver=net.sourceforge.jtds.jdbc.Driver)   |   Tested using Microsoft JDBC Driver 4.0 (sqljdbc4.jar) and JTDS Driver  |
 ## 3.6. 创建数据库表
 为数据库创建数据库表的最简单方法是：
-- 将可流动引擎JAR添加到类路径中
+- 在classpath中增加flowable-engine jar
 
 - 添加合适的数据库驱动程序
 
-- 将Flowable配置文件（flowable.cfg.xml）添加到类路径中，指向您的数据库（请参阅数据库配置部分）
+- 在classpath中增加Flowable配置文件(flowable.cfg.xml)，指向你的数据库(参考数据库配置)
 
 - 执行DbSchemaCreate类的main方法
 
