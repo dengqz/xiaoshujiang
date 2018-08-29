@@ -419,7 +419,7 @@ curl --user rest-admin:test http://localhost:8080/flowable-rest/service/manageme
 如果您返回正确的json响应，则REST API已启动并正在运行。
 
 ### 2.4.2. 部署流程定义
-第一步是部署流程定义。使用REST API，可以通过将.bpmn20.xml文件（或多个流程定义的.zip文件）上传为multipart / formdata来完成：
+第一步是部署一个流程定义。使用REST API时，需要将一个.bpmn20.xml文件（或对于多个流程引擎，一个.zip文件）作为’multipart/formdata’上传：
 ```
 curl --user rest-admin:test -F "file=@holiday-request.bpmn20.xml" http://localhost:8080/flowable-rest/service/repository/deployments
 ```
@@ -429,23 +429,22 @@ curl --user rest-admin:test http://localhost:8080/flowable-rest/service/reposito
 ```
 它返回当前部署到引擎的所有流程定义的列表。
 ### 2.4.3. 启动流程实例
-通过REST API启动流程实例类似于通过Java API执行相同操作：提供了一个密钥来标识要与初始流程变量映射一起使用的流程定义：
+使用REST API启动一个流程实例与使用Java API很像：提供key作为流程定义的标识，并使用一个map作为初始化流程变量：
 ```
 curl --user rest-admin:test -H "Content-Type: application/json" -X POST -d '{ "processDefinitionKey":"holidayRequest", "variables": [ { "name":"employee", "value": "John Doe" }, { "name":"nrOfHolidays", "value": 7 }]}' http://localhost:8080/flowable-rest/service/runtime/process-instances
 ```
-返回类似的东西
+这将返回类似：
 ```json?linenums
 {"id":"43","url":"http://localhost:8080/flowable-rest/service/runtime/process-instances/43","businessKey":null,"suspended":false,"ended":false,"processDefinitionId":"holidayRequest:1:42","processDefinitionUrl":"http://localhost:8080/flowable-rest/service/repository/process-definitions/holidayRequest:1:42","activityId":null,"variables":[],"tenantId":"","completed":false}
 ```
 ### 2.4.4. 任务列表并完成任务
-启动流程实例时，会将第一个任务分配给经理组。要获取该组的所有任务，可以通过REST API完成任务查询：
-
+当流程实例启动后，第一个任务会指派给’managers’组。要获取这个组的所有任务，可以通过REST API进行任务查询：
 ```
 curl --user rest-admin:test -H "Content-Type: application/json" -X POST -d '{ "candidateGroup" : "managers" }' http://localhost:8080/flowable-rest/service/query/tasks
 ```
-它返回管理员组的所有任务列表
+这将返回’manager’组的所有任务的列表。
 
-现在可以使用以下方法完成此类任务：
+这样的任务可以如此完成：
 ```shell
 curl --user rest-admin:test -H "Content-Type: application/json" -X POST -d '{ "action" : "complete", "variables" : [ { "name" : "approved", "value" : true} ]  }' http://localhost:8080/flowable-rest/service/runtime/tasks/25
 ```
@@ -453,4 +452,4 @@ curl --user rest-admin:test -H "Content-Type: application/json" -X POST -d '{ "a
 ```shell
 {"message":"Internal server error","exception":"couldn't instantiate class org.flowable.CallExternalSystemDelegate"}
 ```
-这意味着引擎无法找到服务任务中引用的CallExternalSystemDelegate类。要解决这个问题，需要将类放在应用程序的类路径上（这需要重新启动）。按照本节中的描述创建类，将其打包为JAR，并将其放在Tomcat 的webapps文件夹下的flowable -rest文件夹的WEB-INF / lib文件夹中。
+这意味着引擎无法找到服务任务引用的CallExternalSystemDelegate类。要解决这个错误，需要将该类放在应用的classpath下（并需要重启应用）。按照《Flowable基础二 Flowable是什么》的介绍创建该类，并将其打包为JAR，放在Tomcat的webapps目录下的flowable-rest目录下的WEB-INF/lib目录下。
