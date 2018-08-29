@@ -174,43 +174,44 @@ Tomcat的JNDI资源配置在$CATALINA_BASE/conf/[enginename]/[hostname]/[warname
 
 - 执行DbSchemaCreate类的main方法
 
-但是，通常只有数据库管理员才能在数据库上执行DDL语句。在生产系统上，这也是最明智的选择。SQL DDL语句可以在Flowable下载页面上或Flowable分发文件夹内的database子目录中找到。脚本也在引擎JAR（flowable-engine-x.jar）中，在org / flowable / db / create包中（drop文件夹包含drop语句）。SQL文件的形式
+然而，通常只有数据库管理员可以在数据库中执行DDL语句，在生产环境中这也是最明智的选择。DDL的SQL脚本可以在Flowable下载页面或Flowable发布目录中找到，位于database子目录。引擎jar (flowable-engine-x.jar)的org/flowable/db/create包中也有一份(drop目录存放删除脚本)。SQL文件的格式为：
 ```
 flowable.{db}.{create|drop}.{type}.sql
 ```
-其中DB是任何的支持的数据库和类型是：
-- engine：引擎执行所需的表。需要。
+db为支持的数据库，而type为：
+- engine：引擎执行所需的表，必需。
 
-- history：包含历史记录和审计信息的表。可选：历史记录级别设置为none时不需要。请注意，这还将禁用将数据存储在历史数据库中的某些功能（例如注释任务）。
+- history：存储历史与审计信息的表。当历史级别设置为none时不需要。请注意不使用这些表会导致部分使用历史数据的功能失效（如任务备注）。
 
-MySQL用户注意事项：低于5.6.4的MySQL版本不支持精度为毫秒级的时间戳或日期。更糟糕的是，某些版本在尝试创建此类列时会抛出异常，但其他版本则不会。在进行自动创建/升级时，引擎会在执行时更改DDL。使用DDL文件方法时，常规版本和包含mysql55的特殊文件都可用（这适用于低于5.6.4的任何内容）。后一个文件将具有没有毫秒精度的列类型。
+MySQL用户注意事项：低于5.6.4的MySQL版本不支持timestamps或包含毫秒精度的日期。更糟的是部分版本会在创建类似的列时抛出异常，而另一些版本则不会。当使用自动创建/升级时，引擎在执行时会自动修改DDL语句。当使用DDL文件方式建表时，可以使用通用版本，或使用文件名包含mysql55的特殊版本（用于5.6.4以下的任何版本）。特殊版本的文件中不会使用毫秒精度的列类型。
 
-具体来说，以下适用于MySQL版本：
+具体来说，对于MySQL的版本：
 
-- <5.6：没有毫秒精度。DDL文件可用（查找包含mysql55的文件）。自动创建/更新将开箱即用。
+- <5.6：不支持毫秒精度。可以使用DDL文件（使用包含mysql55的文件）。可以使用自动创建/升级。
 
-- 5.6.0 - 5.6.3：没有毫秒级精度。自动创建/更新将不起作用。建议无论如何都要升级到更新的数据库版本。如果确实需要，可以使用mysql 5.5的 DDL文件。
+- 5.6.0 - 5.6.3：不支持毫秒精度。不可以使用自动创建/升级。建议升级为较新版本的数据库。如果确实需要，可以使用包含mysql55的DDL文件。
 
-- 5.6.4+：可用毫秒精度。DDL文件可用（包含mysql的默认文件）。自动创建/更新开箱即用。
+- 5.6.4+：支持毫秒精度。可以使用DDL文件（默认的包含mysql的文件）。可以使用自动创建/升级。
 
-请注意，如果稍后升级MySQL数据库并且已经创建/升级了Flowable表，则必须手动完成列类型更改！
+请注意在Flowable表已经创建/升级后，再升级MySQL数据库，则需要手工修改列类型！
+
 ## 3.7. 数据库表名称解释
-Flowable的数据库名称都以ACT_开头。第二部分是表的用例的双字符标识。此用例也将大致匹配服务API。
+Flowable的所有数据库表都以ACT_开头。第二部分是说明表用途的两字符标示符。服务API的命名也大略符合这个规则。
 
-- ACT_RE_ *：RE代表repository。具有此前缀的表包含静态信息，例如流程定义和流程资源（图像，规则等）。
+- ACT_RE_ *：'RE’代表`repository`。带有这个前缀的表包含“静态”信息，例如流程定义与流程资源（图片、规则等）。
 
-- ACT_RU_ *：RU代表runtime。这些是包含流程实例，用户任务，变量，作业等的运行时数据的运行时表。Flowable仅在流程实例执行期间存储运行时数据，并在流程实例结束时删除记录。这使运行时表保持小而快。
+- ACT_RU_ *： 'RU’代表`runtime`。这些表存储运行时信息，例如流程实例（process instance）、用户任务（user task）、变量（variable）、作业（job）等。Flowable只在流程实例运行中保存运行时数据，并在流程实例结束时删除记录。这样保证运行时表小和快。
 
-- ACT_HI_ *：HI代表history。这些是包含历史数据的表，例如过去的流程实例，变量，任务等。
+- ACT_HI_ *：'HI’代表`history`。这些表存储历史数据，例如已完成的流程实例、变量、任务等。
 
-- ACT_GE_ *：general数据，用于各种用例。
+- ACT_GE_ *： 通用数据。在很多场景中使用。
 
 ## 3.8. 数据库升级
-在运行升级之前，请确保备份数据库（使用数据库备份功能）。
+在升级前，请确保你已经（使用数据库的备份功能）备份了数据库。
 
-默认情况下，每次创建流程引擎时都会执行版本检查。这通常在应用程序或Flowable Web应用程序的引导时发生一次。如果Flowable库注意到库版本和Flowable数据库表的版本之间的差异，则抛出异常。
+默认情况下，每次流程引擎创建时会进行版本检查，通常是在你的应用或者Flowable web应用启动的时候。如果Flowable库发现库版本与Flowable数据库表版本不同，会抛出异常。
 
-要升级，必须首先将以下配置属性放在flowable.cfg.xml配置文件中：
+要进行升级，首先需要将下列配置参数放入你的flowable.cfg.xml配置文件：
 ```xml?linenums
 <beans >
 
@@ -223,13 +224,13 @@ Flowable的数据库名称都以ACT_开头。第二部分是表的用例的双�
 
 </beans>
 ```
-另外，为数据库添加适合数据库驱动程序的类路径。升级应用程序中的Flowable库。或者启动Flowable的新版本并将其指向包含旧版本数据的数据库。随着databaseSchemaUpdate设置为true可流动会自动的第一次，当它注意到图书馆和数据库架构不同步升级数据库架构到最新版本。
+同时，在classpath中加上合适的数据库驱动。升级你应用中的Flowable库，或者启动一个新版本的Flowable，并将它指向包含旧版本数据的数据库。将`databaseSchemaUpdate`设置为true。当Flowable发现库与数据库表结构不同步时，会自动将数据库表结构升级至新版本。
 
-或者，您也可以运行升级DDL语句。也可以在Flowable下载页面上运行可用的升级数据库脚本。
-## 3.9. Job Executor（从6.0.0版开始）
-Flowable v5的异步执行程序是Flowable V6中唯一可用的作业执行程序，因为它是一种在Flowable引擎中执行异步作业的性能更高且更加数据库友好的方式。V6中不再提供Flowable 5的旧作业执行程序。可以在用户指南的高级部分中找到更多信息。
+你还可以直接运行升级DDL语句，也可以从Flowable下载页面获取升级数据库脚本并运行。
+## 3.9. 作业执行器（从6.0.0版开始）
+在Flowable V6中唯一可用的作业执行器，是Flowable V5中的异步执行器(async executor)。因为它为Flowable引擎提供了性能更好，对数据库也更友好的执行异步作业的方式。Flowable V5中的作业执行器(job executor)在V6中不再可用。
 
-此外，如果在Java EE 7下运行，ManagedAsyncJobExecutor则可以使用JSR-236兼容容器来管理线程。为了启用它们，应该在配置中传递线程工厂，如下所示：
+此外，如果在Java EE 7下运行，容器还可以使用符合JSR-236标准的ManagedJobExecutor来管理线程。要启用这个功能，需要在配置中如下加入线程工厂：
 ```xml?linenums
 <bean id="threadFactory" class="org.springframework.jndi.JndiObjectFactoryBean">
    <property name="jndiName" value="java:jboss/ee/concurrency/factory/default" />
@@ -241,15 +242,15 @@ Flowable v5的异步执行程序是Flowable V6中唯一可用的作业执行程�
    <!-- ... -->
 </bean>
 ```
-如果未指定线程工厂，则托管实现将回退到其默认对应项。
-## 3.10. 作业执行者激活
-这AsyncExecutor是一个管理线程池以触发计时器和其他异步任务的组件。其他实现也是可能的（例如，使用消息队列，请参阅用户指南的高级部分）。
+如果没有设置线程工厂，ManagedJobExecutor实现会退化为默认实现（非managed版本）。
+## 3.10. 作业执行器激活
+ `AsyncExecutor`是管理线程池的组件，用于触发定时器与其他异步任务。也可以使用其他实现（例如使用消息队列，参见用户手册的高级章节）。
 
-默认情况下，AsyncExecutor未激活且未启动。通过以下配置，可以与Flowable Engine一起启动异步执行程序。
+默认情况下，`AsyncExecutor`并未激活，也不会启动。用如下配置使异步执行器与Flowable引擎一同启动：
 ```xml?linenums
 	<property name="asyncExecutorActivate" value="true" />
 ```
-属性asyncExecutorActivate指示Flowable引擎在启动时启动Async执行程序。
+`asyncExecutorActivate`这个参数使Flowable引擎在启动同时启动异步执行器。
 ## 3.11. 邮件服务器配置
 配置邮件服务器是可选的。Flowable支持在业务流程中发送电子邮件。要实际发送电子邮件，需要有效的SMTP邮件服务器配置。有关配置选项，请参阅电子邮件任务。
 ## 3.12. 历史配置
