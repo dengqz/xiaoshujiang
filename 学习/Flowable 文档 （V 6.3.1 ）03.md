@@ -1114,3 +1114,17 @@ void addEventListener(FlowableEventListener listenerToAdd, FlowableEventType... 
   </tbody>
 </table>
 <!--EndFragment-->
+所有ENTITY_\*事件都与引擎内的实体相关。下面的列表显示了为哪些实体分派了哪些实体事件的概述：
+
+- ENTITY_CREATED, ENTITY_INITIALIZED, ENTITY_DELETED：附件，注释，部署，执行，组，IdentityLink，作业，模型，ProcessDefinition，ProcessInstance，任务，用户。
+
+- ENTITY_UPDATED：附件，部署，执行，组，IdentityLink，作业，模型，ProcessDefinition，ProcessInstance，任务，用户。
+
+- ENTITY_SUSPENDED, ENTITY_ACTIVATED：ProcessDefinition，ProcessInstance / Execution，Task。
+
+### 3.18.7 补充说明
+只有通过他们注册的引擎发送的事件才会通知监听器。因此，如果您有不同的引擎 - 针对同一个数据库运行 - 只会将侦听器注册到的引擎中发起的事件调度到该侦听器。无论是否在同一JVM中运行，其他引擎中发生的事件都不会分派给侦听器。
+
+某些事件类型（与实体相关）公开目标实体。根据类型或事件，这些实体不能再更新（例如，删除实体时）。如果可能，使用EngineServices事件公开的内容以安全的方式与引擎进行交互。即便如此，您还需要对调度事件中涉及的实体的更新/操作保持谨慎。
+
+没有调度与历史相关的实体事件，因为它们都具有调度其事件的运行时对应事件。
