@@ -109,4 +109,59 @@ ProcessEngine processEngine = ProcessEngineConfiguration.createStandaloneInMemPr
   <property name="dataSource" ref="dataSource" />
   ...
  ```
+ 请注意，Flowable不附带允许您定义此类数据源的库。因此，您需要确保库位于类路径中。
+
+无论您使用的是JDBC还是数据源方法，都可以设置以下属性：
+
+ - databaseType：通常不需要指定此属性，因为它是从数据库连接元数据中自动检测到的。只应在自动检测失败时指定。可能的值：{h2，mysql，oracle，postgres，mssql，db2}。此设置将确定将使用哪些创建/删除脚本和查询。请参阅该支持的数据库部分用于哪些类型支持的概述。
+ - databaseSchemaUpdate：设置策略以在流程引擎启动和关闭时处理数据库模式。
+  - false （默认值）：在创建流程引擎时检查库模式的版本，如果版本不匹配则抛出异常。
+  - true：在构建流程引擎时，执行检查并在必要时执行模式更新。如果架构不存在，则创建它。
+  - create-drop：在创建流程引擎时创建架构，并在关闭流程引擎时删除架构。
+  
+## 3.4. JNDI数据源配置
+默认情况下，Flowable的数据库配置包含在每个Web应用程序的WEB-INF / classes中的db.properties文件中。这并不总是理想的，因为它要求用户修改Flowable源中的db.properties并重新编译WAR文件，或者在每次部署时分解WAR并修改db.properties。
+
+通过使用JNDI（Java命名和目录接口）获取数据库连接，连接完全由Servlet容器管理，并且可以在WAR部署之外管理配置。与db.properties文件提供的连接参数相比，这还允许更多地控制连接参数。
+### 3.4.1. 组态
+根据您使用的servlet容器应用程序，JNDI数据源的配置会有所不同。以下说明适用于Tomcat，但对于其他容器应用程序，请参阅容器应用程序的文档。
+
+如果使用Tomcat，所述JNDI资源被配置$ CATALINA_BASE内/ CONF / [引擎] / [主机名] / [warname] .XML（用于可流动UI这通常将是$ CATALINA_BASE / CONF /卡塔利娜/本地主机/可流动的应用内。 XML）。首次部署应用程序时，将从Flowable WAR文件复制默认上下文，因此如果已存在，则需要替换它。例如，要更改JNDI资源以便应用程序连接到MySQL而不是H2，请将文件更改为以下内容：
+```xml?linenums
+<?xml version="1.0" encoding="UTF-8"?>
+    <Context antiJARLocking="true" path="/flowable-app">
+        <Resource auth="Container"
+            name="jdbc/flowableDB"
+            type="javax.sql.DataSource"
+            description="JDBC DataSource"
+            url="jdbc:mysql://localhost:3306/flowable"
+            driverClassName="com.mysql.jdbc.Driver"
+            username="sa"
+            password=""
+            defaultAutoCommit="false"
+            initialSize="5"
+            maxWait="5000"
+            maxActive="120"
+            maxIdle="5"/>
+        </Context>
+```
+### 3.4.2. JNDI属性
+要配置JNDI数据源，请在Flowable UI的属性文件中使用以下属性：
+
+- spring.datasource.jndi-name =：数据源的JNDI名称。
+
+- datasource.jndi.resourceRef：设置是否在J2EE容器中进行查找，例如，如果JNDI名称尚未包含前缀，则需要添加前缀“java：comp / env /”。默认为“true”。
+
+## 3.5. 支持的数据库
+下面列出了Flowable用于引用数据库的类型（区分大小写！）。
+
+|  数据库类型   |  示例JDBC URL   |  笔记   |
+| :-- | :-- | :-- |
+|   h2  |  jdbc:h2:tcp://localhost/flowable   | Default configured database    |
+|  mysql   |  jdbc:mysql://localhost:3306/flowable?autoReconnect=true   |  Tested using mysql-connector-java database driver   |
+|   oracle  |   jdbc:oracle:thin:@localhost:1521:xe  |     |
+|  postgres   | jdbc:postgresql://localhost:5432/flowable    |     |
+|   db2  |     |  jdbc:db2://localhost:50000/flowable   |
+|  mssql   |  jdbc:sqlserver://localhost:1433;databaseName=flowable (jdbc.driver=com.microsoft.sqlserver.jdbc.SQLServerDriver) OR jdbc:jtds:sqlserver://localhost:1433/flowable (jdbc.driver=net.sourceforge.jtds.jdbc.Driver)   |   Tested using Microsoft JDBC Driver 4.0 (sqljdbc4.jar) and JTDS Driver  |
+
 
