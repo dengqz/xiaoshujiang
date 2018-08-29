@@ -132,4 +132,125 @@ log4j.appender.CA = org.apache.log4j.ConsoleAppender
 log4j.appender.CA.layout = org.apache.log4j.PatternLayout
 log4j.appender.CA.layout.ConversionPattern =％d {hh：mm：ss，SSS} [％t]％-5p％c％x  - ％m％n
 ```
+
+重新运行该应用程序。您现在应该看到有关引擎启动的信息性日志记录以及在数据库中创建的数据库模式：
+
+![enter description here](./images/getting.started.console.logging2.png)
+
+### 2.3.2. 部署流程定义
+
+我们将构建的流程是一个非常简单的假期请求流程。Flowable引擎期望以BPMN 2.0格式定义流程，BPMN 2.0格式是业界广泛接受的XML标准。在Flowable术语中，我们将此视为流程定义。从流程定义中，可以启动许多流程实例。将流程定义视为许多流程执行的蓝图。在这种特殊情况下，流程定义定义了请求假期所涉及的不同步骤，而一个流程实例与一个特定员工的假期请求相匹配。
+
+BPMN 2.0存储为XML，但它也有一个可视化部分：它以标准方式定义每个不同步骤类型（人工任务，自动服务调用等）的表示方式以及如何将这些不同的步骤连接到彼此。通过这种方式，BPMN 2.0标准允许技术人员和业务人员以双方都理解的方式交流业务流程。
+
+我们将使用的流程定义如下：
+
+![enter description here](./images/getting.started.bpmn.process.png)
+
+这个过程应该是不言自明的，但为了清楚起见，让我们描述不同的位：
+
+ - 我们假设通过提供一些信息来启动流程，例如员工姓名，请求的假期数量和描述。当然，这可以作为该过程中单独的第一步建模。但是，通过将其作为进程的输入数据，只有在发出实际请求时才会实际创建流程实例。在另一种情况下，用户可以在提交之前改变主意并取消，但流程实例现在将在那里。在某些情况下，这可能是有价值的信息（例如，请求已启动但未完成的次数），具体取决于业务目标。
+ - 左侧的圆圈称为开始事件。它是流程实例的起点。
+ - 第一个矩形是用户任务。这是人类用户必须执行的过程中的一个步骤。在这种情况下，经理需要批准或拒绝该请求。
+ - 根据经理决定的内容，专用网关（带有十字的菱形）将流程实例路由到批准或拒绝路径。
+ - 如果获得批准，我们必须在某个外部系统中注册该请求，然后再向原始员工发送一个用户任务，通知他们该决定。当然，这可以用电子邮件代替。
+ - 如果被拒绝，将向员工发送一封电子邮件，通知他们。
+
+通常，这样的流程定义使用可视化建模工具建模，例如Flowable Designer（Eclipse）或Flowable Modeler（Web应用程序）。
+
+然而，在这里，我们将直接编写XML以熟悉BPMN 2.0及其概念。
+
+与上图对应的BPMN 2.0 XML如下所示。请注意，这只是流程部分。如果您使用了图形建模工具，则基础XML文件还包含描述图形信息的可视化部分，例如流程定义的各个元素的坐标（所有图形信息都包含在XML 中的BPMNDiagram标记中） ，这是定义标签的子元素）。
+
+将以下XML保存在src / main / resources文件夹中名为holiday-request.bpmn20.xml的文件中。
+
+```xml?linenums
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:flowable="http://flowable.org/bpmn"
+  typeLanguage="http://www.w3.org/2001/XMLSchema"
+  expressionLanguage="http://www.w3.org/1999/XPath"
+  targetNamespace="http://www.flowable.org/processdef">
+
+  <process id="holidayRequest" name="Holiday Request" isExecutable="true">
+
+    <startEvent id="startEvent"/>
+    <sequenceFlow sourceRef="startEvent" targetRef="approveTask"/>
+
+    <userTask id="approveTask" name="Approve or reject request"/>
+    <sequenceFlow sourceRef="approveTask" targetRef="decision"/>
+
+    <exclusiveGateway id="decision"/>
+	<sequenceFlow sourceRef="decision" targetRef="externalSystemCall">
+      <conditionExpression xsi:type="tFormalExpression">
+        <![CDATA[
+          ${approved}
+        ]]>
+      </conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow  sourceRef="decision" targetRef="sendRejectionMail">
+      <conditionExpression xsi:type="tFormalExpression">
+        <![CDATA[
+          ${!approved}
+        ]]>
+      </conditionExpression>
+    </sequenceFlow>
+
+    <serviceTask id="externalSystemCall" name="Enter holidays in external system"
+        flowable:class="org.flowable.CallExternalSystemDelegate"/>
+    <sequenceFlow sourceRef="externalSystemCall" targetRef="holidayApprovedTask"/>
+	<userTask id="holidayApprovedTask" name="Holiday approved"/>
+    <sequenceFlow sourceRef="holidayApprovedTask" targetRef="approveEnd"/>
+
+    <serviceTask id="sendRejectionMail" name="Send out rejection email"
+        flowable:class="org.flowable.SendRejectionMail"/>
+    <sequenceFlow sourceRef="sendRejectionMail" targetRef="rejectEnd"/>
+
+    <endEvent id="approveEnd"/>
+
+    <endEvent id="rejectEnd"/>
+
+  </process>
+
+</definitions>
+```
+第2行到第11行看起来有点令人生畏，但它与您在几乎所有流程定义中看到的相同。这是需要与BPMN 2.0标准规范完全兼容的样板材料。
+
+每个步骤（在BPMN 2.0术语，活动中）都有一个id属性，在XML文件中为其提供唯一标识符。所有活动都可以有一个可选名称，当然，这增加了可视化图表的可读性。
+
+的活动由一个连接的序列流，这是视觉图中的定向箭头。执行流程实例时，执行将在序列流之后从start事件流向下一个activity。
+
+离开专用网关的序列流（带有X的菱形）显然是特殊的：两者都具有以表达式形式定义的条件（参见第25和32行）。当流程实例执行到达此网关时，将评估条件并采用解析为true的第一个条件。这就是这里的独家代表：只选择一个。当然，如果需要不同的路由行为，其他类型的网关也是可能的。
+
+此处作为表达式写入的条件的格式为$ {approved}，这是$ {approved == true}的简写。批准的变量称为过程变量。甲过程变量是与过程实例存储在一起，并且可以在过程实例的生命周期过程中使用的数据的持久性位。在这种情况下，它确实意味着我们必须在流程实例中的某个点（当提交管理器用户任务时，或者在Flowable术语中，已完成）设置此流程变量，因为它不是在流程实例启动。
+
+现在我们有了流程BPMN 2.0 XML文件，接下来我们需要将它部署到引擎中。部署流程定义意味着：
+
+ - 流程引擎将XML文件存储在数据库中，因此可以在需要时检索它
+ - 流程定义被解析为内部可执行对象模型，以便可以从中启动流程实例。
+
+要将流程定义部署到Flowable引擎，请使用RepositoryService，可以从ProcessEngine对象中检索该RepositoryService。使用RepositoryService，通过传递XML文件的位置并调用deploy（）方法来实际执行它，从而创建新的Deployment：
+
+```java?linenums
+RepositoryService repositoryService = processEngine.getRepositoryService();
+Deployment deployment = repositoryService.createDeployment()
+  .addClasspathResource("holiday-request.bpmn20.xml")
+  .deploy();
+```
+
+我们现在可以通过API查询引擎知道流程定义（并了解API）。这是通过RepositoryService创建一个新的ProcessDefinitionQuery对象来完成的。
+```java?linenums
+ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+  .deploymentId(deployment.getId())
+  .singleResult();
+System.out.println("Found process definition : " + processDefinition.getName());
+```
+### 2.3.3 启动流程实例
+
+
 ## 2.4. Flowable REST API入门
