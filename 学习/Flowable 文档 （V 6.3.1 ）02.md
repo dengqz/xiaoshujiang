@@ -7,11 +7,11 @@ grammar_cjkRuby: true
 
 # 2. 入门
 ## 2.1. 什么是Flowable？
-Flowable是一个用Java编写的轻量级业务流程引擎。Flowable流程引擎允许您部署BPMN 2.0流程定义（用于定义流程的行业XML标准），创建流程定义的流程实例，运行查询，访问活动或历史流程实例和相关数据等等。本节将逐步介绍各种概念和API，通过您可以在自己的开发机器上遵循的示例来实现。
+Flowable是一个使用Java编写的轻量级业务流程引擎。Flowable流程引擎让你可以部署BPMN 2.0流程定义（用于定义流程的行业XML标准），创建这些流程定义的流程实例，进行查询，访问运行中或历史的流程实例和相关数据等等。本章节将用一个可以在你自己的开发环境中使用的例子，逐步介绍各种概念与API。
 
-Flowable在将其添加到您的应用程序/服务/体系结构时非常灵活。您可以通过包含Flowable库（可用作JAR）将引擎嵌入到您的应用程序或服务中。由于它是JAR，因此您可以轻松地将其添加到任何Java环境中：Java SE; servlet容器，如Tomcat或Jetty，Spring; Java EE服务器，例如JBoss或WebSphere等。或者，您可以使用Flowable REST API通过HTTP进行通信。还有几个Flowable应用程序（Flowable Modeler，Flowable Admin，Flowable IDM和Flowable Task），它们提供了用于处理流程和任务的开箱即用的示例UI。
+Flowable可以十分灵活地加入你的应用/服务/构架。可以将JAR形式发布的Flowable库加入应用或服务，来嵌入引擎。以JAR形式发布使Flowable可以轻易加入任何Java环境：Java SE；Tomcat、Jetty或Spring之类的servlet容器；JBoss或WebSphere之类的Java EE服务器，等等。另外，也可以使用Flowable REST API通过HTTP通信。也有许多Flowable应用（Flowable Modeler, Flowable Admin, Flowable IDM 与 Flowable Task），提供了直接可用的UI示例，可以使用流程与任务。
 
-设置Flowable的所有方法的共同点是核心引擎，可以将其视为公开API以管理和执行业务流程的服务集合。下面的各种教程首先介绍如何设置和使用这个核心引擎。之后的部分建立在前面部分中获得的知识之上。
+所有设置Flowable的方法的共同点是核心引擎，核心引擎可被看做是一组服务的集合，并暴露了管理与执行业务流程的API。下面的各种教程都以设置与使用核心引擎的介绍开始。后续章节都建立在之前章节中获取的知识之上。
 
  - 在第一部分展示了如何在可能的最简单的方式运行可流动：仅使用Java SE普通的Java主。这里将解释许多核心概念和API。
  - 将在可流动的REST API部分显示如何运行，并通过REST使用相同的API。
