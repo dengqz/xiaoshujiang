@@ -15,3 +15,6 @@ grammar_cjkRuby: true
 ### 1.6. JMS
 ### 1.7. AMQP
 ### 1.8. 远程接口未实现自动检测
+### 1.9. 选择技术时的注意事项
+### 1.10. REST端点
+## 2. Enterprise JavaBeans（EJB）集成
