@@ -68,3 +68,26 @@ grammar_cjkRuby: true
 ### 5.7. 程序化创建@AspectJ Proxies
 ### 5.8. 在Spring应用程序中使用AspectJ
 ### 5.9. 更多资源
+## 6. Spring AOP API
+### 6.1. 介绍
+### 6.2. Spring中的Pointcut API
+### 6.3. Spring中的Advice API
+### 6.4. Spring中的Advisor API
+### 6.5. 使用ProxyFactoryBean创建AOP代理
+### 6.6. 简明的代理定义
+### 6.7. 使用ProxyFactory以编程方式创建AOP代理
+### 6.8. 操纵Advice对象
+### 6.9. 使用“自动代理”工具
+### 6.10. 使用TargetSources
+### 6.11. 定义新的Advice类型
+## 7. 无安全性
+### 7.1. 用例
+### 7.2. JSR 305元注释
+## 8. 数据缓冲区和编解码器
+### 8.1. 介绍
+### 8.2. DataBufferFactory
+### 8.3. DataBuffer接口
+### 编解码器
+## 9. 附录
+### 9.1. XML模式
+### 9.2. XML Schema Authoring
