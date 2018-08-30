@@ -1,6 +1,6 @@
 ---
 title: Spring Framework - Web Reactive 
-tags: 新建,模板,小书匠
+tags: Spring WebFlux, WebClient, WebSocket
 grammar_cjkRuby: true
 ---
 
