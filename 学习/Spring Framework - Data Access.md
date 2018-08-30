@@ -46,3 +46,5 @@ grammar_cjkRuby: true
 ### 5.6. Castor
 ### 5.7. JiBX
 ### 5.8. XStream
+## 6. 附录
+### 6.1. XML Schemas
