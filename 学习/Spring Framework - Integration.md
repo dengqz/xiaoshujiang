@@ -1,8 +1,17 @@
 ---
 title: Spring Framework - Integration
-tags: 新建,模板,小书匠
+tags: Remoting, JMS, JCA, JMX, Email, Tasks, Scheduling, Cache
 grammar_cjkRuby: true
 ---
 
 
-欢迎使用 **{小书匠}(xiaoshujiang)编辑器**，您可以通过 `小书匠主按钮>模板` 里的模板管理来改变新建文章的内容。
+# Integration
+## 1. 使用Spring进行远程处理和Web服务
+### 1.1 介绍
+### 1.2. 使用RMI公开服务
+### 1.3. 使用Hessian通过HTTP远程调用服务
+### 1.4. 使用HTTP调用程序公开服务
+### 1.5. 网页服务
+### 1.6. JMS
+### 1.7. AMQP
+### 1.8. 远程接口未实现自动检测
