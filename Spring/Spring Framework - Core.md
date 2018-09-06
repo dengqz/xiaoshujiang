@@ -983,6 +983,8 @@ p命名空间不如标准XML格式灵活。例如，声明属性引用的格式�
     <property name="fred.bob.sammy" value="123" />
 </bean>
 ```
+所述foo豆具有fred属性，该属性具有bob属性，其具有sammy 特性，并且最终sammy属性被设置为值123。为了使这一工作，fred财产foo和bob财产fred绝不能 null豆后构造，或NullPointerException抛出。
+#### 1.4.3. 使用依赖
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
