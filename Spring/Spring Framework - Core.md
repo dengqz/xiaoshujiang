@@ -196,7 +196,47 @@ context.refresh();
 
 然后，您可以使用它getBean来检索Bean的实例。该ApplicationContext 接口还有一些其他方法可用于检索bean，但理想情况下，您的应用程序代码绝不应使用它们。实际上，您的应用程序代码根本不应该调用该 getBean()方法，因此根本不依赖于Spring API。例如，Spring与Web框架的集成为各种Web框架组件（如控制器和JSF托管bean）提供依赖注入，允许您通过元数据（例如自动装配注释）声明对特定bean的依赖性。
 ### 1.3. Bean概述
+Spring IoC容器管理一个或多个bean。这些bean是使用您提供给容器的配置元数据创建的，例如，以XML <bean/>定义的形式 。
 
+在容器本身内，这些bean定义表示为BeanDefinition 对象，其中包含以下元数据（以及其他信息）：
+
+- 包限定的类名：通常是正在定义的bean的实际实现类。
+
+- Bean行为配置元素，说明bean在容器中的行为方式（范围，生命周期回调等）。
+
+- 引用bean执行其工作所需的其他bean; 这些引用也称为协作者或依赖项。
+
+- 要在新创建的对象中设置的其他配置设置，例如，在管理连接池的Bean中使用的连接数，或池的大小限制。
+
+此元数据转换为组成每个bean定义的一组属性。
+表1. bean定义
+| 属性    |  说明   |
+| --- | --- |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+除了包含有关如何创建特定bean的信息的bean定义之外，这些ApplicationContext实现还允许用户注册在容器外部创建的现有对象。这是通过getBeanFactory()返回BeanFactory实现的方法访问ApplicationContext的BeanFactory来完成的DefaultListableBeanFactory。DefaultListableBeanFactory 支持通过方法该登记registerSingleton(..)和 registerBeanDefinition(..)。但是，典型应用程序仅适用于通过元数据bean定义定义的bean。
+```
+需要尽早注册Bean元数据和手动提供的单例实例，以便容器在自动装配和其他内省步骤期间正确推理它们。虽然在某种程度上支持覆盖现有元数据和现有单例实例，但是在运行时注册新bean（与对工厂的实时访问同时）并未得到官方支持，并且可能导致bean容器中的并发访问异常和/或不一致状态。
+```
+#### 1.3.1. 命名bean
+每个bean都有一个或多个标识符。这些标识符在托管bean的容器中必须是唯一的。bean通常只有一个标识符，但如果它需要多个标识符，则额外的标识符可以被视为别名。
+
+在基于XML的配置元数据中，使用id和/或name属性指定bean标识符。该id属性允许您指定一个id。通常，这些名称是字母数字（'myBean'，'fooService'等），但也可能包含特殊字符。如果要向bean引入其他别名，还可以在name 属性中指定它们，用逗号（,），分号（;）或空格分隔。作为历史记录，在Spring 3.1之前的版本中，该id属性被定义为一种xsd:ID类型，它约束了可能的字符。从3.1开始，它被定义为一种xsd:string类型。请注意，id容器仍然强制执行bean 唯一性，但不再是XML解析器。
+
+您不需要为bean提供名称或ID。如果没有显式提供名称或标识，则容器会为该bean生成唯一的名称。但是，如果要通过名称引用该bean，则必须通过使用ref元素或 Service Locator样式查找来提供名称。不提供名称的动机与使用内部bean和自动装配协作者有关。
+```
+Bean命名约定
+惯例是在命名bean时使用标准Java约定作为实例字段名称。也就是说，bean名称以小写字母开头，从那时起就是驼峰式的。这种名称的例子将是（不带引号）'accountManager'， 'accountService'，'userDao'，'loginController'，等等。
+
+命名bean始终使您的配置更易于阅读和理解，如果您使用的是Spring AOP，那么在将建议应用于与名称相关的一组bean时，它会有很大帮助。
+```
 ### 1.4. 依赖
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
