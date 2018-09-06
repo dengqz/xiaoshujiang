@@ -237,6 +237,29 @@ Bean命名约定
 
 命名bean始终使您的配置更易于阅读和理解，如果您使用的是Spring AOP，那么在将建议应用于与名称相关的一组bean时，它会有很大帮助。
 ```
+```
+通过类路径中的组件扫描，Spring按照上述规则为未命名的组件生成bean名称：实质上，采用简单的类名并将其初始字符转换为小写。但是，在（不常见的）特殊情况下，当有多个字符并且第一个和第二个字符都是大写字母时，原始外壳将被保留。这些是java.beans.Introspector.decapitalize（Spring在这里使用的）定义的相同规则。
+```
+在bean定义之外别名bean
+在bean定义本身中，您可以为bean提供多个名称，方法是使用id属性指定的最多一个名称和属性中的任意数量的其他名称name。这些名称可以是同一个bean的等效别名，并且在某些情况下很有用，例如允许应用程序中的每个组件通过使用特定于该组件本身的bean名称来引用公共依赖项。
+
+但是，指定实际定义bean的所有别名并不总是足够的。有时需要为其他地方定义的bean引入别名。在大型系统中通常就是这种情况，其中配置在每个子系统之间分配，每个子系统具有其自己的一组对象定义。在基于XML的配置元数据中，您可以使用该<alias/>元素来完成此任务。
+```xml
+<alias name="fromName" alias="toName"/>
+```
+在这种情况下，fromName在使用此别名定义之后，同名容器中的bean 也可以称为toName。
+
+例如，子系统A的配置元数据可以通过名称引用数据源subsystemA-dataSource。子系统B的配置元数据可以通过名称引用数据源subsystemB-dataSource。在编写使用这两个子系统的主应用程序时，主应用程序通过名称引用DataSource myApp-dataSource。要使所有三个名称引用您添加到MyApp配置元数据的同一对象，请使用以下别名定义：
+```xml
+<alias name="subsystemA-dataSource" alias="subsystemB-dataSource"/>
+<alias name="subsystemA-dataSource" alias="myApp-dataSource" />
+```
+现在，每个组件和主应用程序都可以通过一个唯一的名称引用dataSource，并保证不与任何其他定义冲突（有效地创建命名空间），但它们引用相同的bean。
+```
+Java的配置
+如果您使用的是Java配置，则@Bean可以使用注释来提供别名，请参阅使用@Bean注释了解详细信息。
+```
+
 ### 1.4. 依赖
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
