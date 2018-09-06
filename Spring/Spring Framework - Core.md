@@ -1234,8 +1234,41 @@ java.lang.String
 String
 Str
 ```
+因为参数的数量通常足以区分每个可能的选择，所以通过允许您只键入与参数类型匹配的最短字符串，此快捷方式可以节省大量的输入。
 
 ### 1.5. Bean 范围
+创建bean定义时，可以创建用于创建该bean定义所定义的类的实际实例的配方。bean定义是一个配方的想法很重要，因为它意味着，与一个类一样，您可以从一个配方创建许多对象实例。
+
+您不仅可以控制要插入到从特定bean定义创建的对象中的各种依赖项和配置值，还可以控制从特定bean定义创建的对象的范围。这种方法功能强大且灵活，您可以选择通过配置创建的对象的范围，而不必在Java类级别烘焙对象的范围。可以将Bean定义为部署在多个范围之一中：开箱即用，Spring Framework支持六个范围，其中四个范围仅在您使用Web感知时才可用ApplicationContext。
+
+开箱即用支持以下范围。您还可以创建 自定义范围。
+表3. Bean范围
+
+|     |     |
+| --- | --- |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+```
+从Spring 3.0开始，线程范围可用，但默认情况下未注册。有关更多信息，请参阅相关文档 SimpleThreadScope。有关如何注册此范围或任何其他自定义范围的说明，请参阅 使用自定义范围。
+```
+#### 1.5.1. 单身范围
+只管理单个bean的一个共享实例，并且对具有与该bean定义匹配的id或id的bean的所有请求都会导致Spring容器返回一个特定的bean实例。
+
+换句话说，当您定义一个bean定义并且它的范围是一个单例时，Spring IoC容器只创建该bean定义定义的对象的一个实例。此单个实例存储在此类单例bean的缓存中，并且该命名Bean的所有后续请求和引用都将返回缓存对象。
+图
+Spring的单例bean概念不同于Gang of Four（GoF）模式书中定义的Singleton模式。GoF Singleton对对象的范围进行硬编码，使得每个ClassLoader创建一个且只有一个特定类的实例。Spring单例的范围最好按容器和每个bean描述。这意味着如果在单个Spring容器中为特定类定义一个bean，则Spring容器将创建该bean定义所定义的类的一个且仅一个实例。单例范围是Spring中的默认范围。要将bean定义为XML中的单例，您可以编写，例如：
+```xml
+<bean id="accountService" class="com.foo.DefaultAccountService"/>
+
+<!-- the following is equivalent, though redundant (singleton scope is the default) -->
+<bean id="accountService" class="com.foo.DefaultAccountService" scope="singleton"/>
+```
+
+
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
 ### 1.8. 集装箱扩建点
