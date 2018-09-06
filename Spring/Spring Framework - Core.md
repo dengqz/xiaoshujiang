@@ -325,6 +325,16 @@ public class ClientService {
     factory-bean="serviceLocator"
     factory-method="createClientServiceInstance"/>
 ```
+```java?linenums
+public class DefaultServiceLocator {
+
+    private static ClientService clientService = new ClientServiceImpl();
+
+    public ClientService createClientServiceInstance() {
+        return clientService;
+    }
+}
+```
 ### 1.4. 依赖
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
