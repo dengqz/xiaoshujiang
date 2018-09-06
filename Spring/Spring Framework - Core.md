@@ -985,6 +985,58 @@ p命名空间不如标准XML格式灵活。例如，声明属性引用的格式�
 ```
 所述foo豆具有fred属性，该属性具有bob属性，其具有sammy 特性，并且最终sammy属性被设置为值123。为了使这一工作，fred财产foo和bob财产fred绝不能 null豆后构造，或NullPointerException抛出。
 #### 1.4.3. 使用依赖
+如果bean是另一个bean的依赖项，通常意味着将一个bean设置为另一个bean的属性。通常，您可以使用基于XML的配置元数据中的<ref/> 元素来完成此操作。但是，有时bean之间的依赖关系不那么直接; 例如，需要触发类中的静态初始化程序，例如数据库驱动程序注册。depends-on在初始化使用此元素的bean之前，该属性可以显式强制初始化一个或多个bean。以下示例使用该depends-on属性表示对单个bean的依赖关系：
+```xml
+<bean id="beanOne" class="ExampleBean" depends-on="manager"/>
+<bean id="manager" class="ManagerBean" />
+```
+要表示对多个bean的依赖关系，请提供bean名称列表作为depends-on属性的值，使用逗号，空格和分号作为有效分隔符：
+```xml
+<bean id="beanOne" class="ExampleBean" depends-on="manager,accountDao">
+    <property name="manager" ref="manager" />
+</bean>
+
+<bean id="manager" class="ManagerBean" />
+<bean id="accountDao" class="x.y.jdbc.JdbcAccountDao" />
+```
+```
+depends-onbean定义中的属性既可以指定初始化时间依赖性，也可以指定单独的 bean，相应的销毁时间依赖性。depends-on在给定的bean本身被销毁之前，首先销毁定义与给定bean 的关系的从属bean 。因此depends-on也可以控制关机顺序。
+```
+#### 1.4.4. 懒惰初始化的bean
+默认情况下，ApplicationContext实现会急切地创建和配置所有 单例 bean作为初始化过程的一部分。通常，这种预先实例化是可取的，因为配置或周围环境中的错误是立即发现的，而不是几小时甚至几天后。如果不希望出现这种情况，可以通过将bean定义标记为延迟初始化来阻止单例bean的预实例化。延迟初始化的bean告诉IoC容器在第一次请求时创建bean实例，而不是在启动时创建。
+
+在XML中，此行为由 元素lazy-init上的属性控制<bean/>; 例如：
+```xml
+<bean id="lazy" class="com.foo.ExpensiveToCreateBean" lazy-init="true"/>
+<bean name="not.lazy" class="com.foo.AnotherBean"/>
+```
+当前面的配置被a使用时ApplicationContext，命名的bean lazy在ApplicationContext启动时不会急切地预先实例化，而not.lazybean被急切地预先实例化。
+
+但是，当延迟初始化的bean是未进行延迟初始化的单例bean的依赖项时 ，ApplicationContext会在启动时创建延迟初始化的bean，因为它必须满足单例的依赖关系。惰性初始化的bean被注入到其他地方的单例bean中，而不是懒惰初始化的。
+
+您还可以通过使用元素default-lazy-init上的属性来控制容器级别的延迟初始化 <beans/>; 例如：
+```xml
+<beans default-lazy-init="true">
+    <!-- no beans will be pre-instantiated... -->
+</beans>
+```
+#### 1.4.5. 自动装配协作者
+Spring容器可以自动连接协作bean之间的关系。您可以通过检查内容来允许Spring自动为您的bean解析协作者（其他bean）ApplicationContext。自动装配具有以下优点：
+
+- 自动装配可以显着减少指定属性或构造函数参数的需要。（在本章其他地方讨论的其他机制，如bean模板 ，在这方面也很有价值。）
+
+- 自动装配可以随着对象的发展更新配置。例如，如果需要向类添加依赖项，则可以自动满足该依赖项，而无需修改配置。因此，自动装配在开发期间尤其有用，而不会在代码库变得更稳定时否定切换到显式布线的选项。
+
+使用基于XML的配置元数据[ 2 ]时，可以使用元素的autowire属性为bean定义指定autowire模式<bean/>。自动装配功能有四种模式。您指定每个 bean的自动装配，因此可以选择要自动装配的那些。
+表2.自动装配模式
+
+|     |     |
+| --- | --- |
+|     |     |
+|     |     |
+|     |     |
+|     |     |
+
 
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
