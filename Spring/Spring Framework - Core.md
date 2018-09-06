@@ -1234,6 +1234,7 @@ java.lang.String
 String
 Str
 ```
+
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
