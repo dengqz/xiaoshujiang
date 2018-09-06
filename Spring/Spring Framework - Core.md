@@ -1228,7 +1228,7 @@ public class ReplacementComputeValue implements MethodReplacer {
 
 <bean id="replacementComputeValue" class="a.b.c.ReplacementComputeValue"/>
 ```
-您可以<arg-type/>在<replaced-method/> 元素中使用一个或多个包含的元素来指​​示被覆盖的方法的方法签名。仅当方法重载且类中存在多个变体时，才需要参数的签名。为方便起见，参数的类型字符串可以是完全限定类型名称的子字符串。例如，以下所有匹配 java.lang.String：
+您可以<arg-type/>在<replaced-method/> 元素中使用一个或多个包含的元素来指示被覆盖的方法的方法签名。仅当方法重载且类中存在多个变体时，才需要参数的签名。为方便起见，参数的类型字符串可以是完全限定类型名称的子字符串。例如，以下所有匹配 java.lang.String：
 ```
 java.lang.String
 String
