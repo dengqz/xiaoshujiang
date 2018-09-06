@@ -700,6 +700,61 @@ idref元素
     </property>
 </bean>
 ```
+上面的bean定义代码段与以下代码段完全等效（在运行时）：
+```xml
+<bean id="theTargetBean" class="..." />
+
+<bean id="client" class="...">
+    <property name="targetName" value="theTargetBean"/>
+</bean>
+```
+第一种形式优于第二种形式，因为使用idref标签允许容器在部署时验证引用的命名bean实际存在。在第二个变体中，不对传递给bean 的targetName属性的值执行验证client。只有在client实际实例化bean 时才会发现错别字（很可能是致命的结果）。如果client bean是原型 bean，则只能在部署容器后很长时间才能发现此错误和结果异常。
+```
+4.0 beans xsd不再支持local该idref元素的属性，因为它不再提供常规bean引用的值。只需将现有idref local引用更改为idref bean升级到4.0架构。
+```
+其中一个共同的地方（至少在早期比Spring 2.0版本）<idref/>元素带来的值在配置AOP拦截在 ProxyFactoryBeanbean定义。<idref/>指定拦截器名称时使用元素可以防止拼写错误的拦截器ID。
+
+引用其他bean（协作者）
+所述ref元件是内部的最终元件<constructor-arg/>或<property/> 定义元素。在这里，您可以将bean的指定属性的值设置为对容器管理的另一个bean（协作者）的引用。引用的bean是bean的依赖项，其属性将被设置，并且在设置属性之前根据需要按需初始化。（如果协作者是单例bean，它可能已由容器初始化。）所有引用最终都是对另一个对象的引用。划定范围和有效性取决于是否通过指定其他对象的ID /名称bean，local,或parent属性。
+
+通过标记的bean属性指定目标bean <ref/>是最常用的形式，并允许创建对同一容器或父容器中的任何bean的引用，而不管它是否在同一XML文件中。bean属性的值 可以id与目标bean 的属性相同，或者作为目标bean的name属性中的值之一。
+```xml
+<ref bean="someBean"/>
+```
+通过该parent属性指定目标bean 会创建对当前容器的父容器中的bean的引用。parent 属性的值可以id与目标bean 的属性相同，也可以与目标bean 的属性中的一个值相同name，并且目标bean必须位于当前bean的父容器中。您主要在拥有容器层次结构并且希望将现有bean包装在父容器中并使用与父bean具有相同名称的代理时使用此Bean引用变体。
+```xml
+<!-- in the parent context -->
+<bean id="accountService" class="com.foo.SimpleAccountService">
+    <!-- insert dependencies as required as here -->
+</bean>
+```
+```xml
+<!-- in the child (descendant) context -->
+<bean id="accountService" <!-- bean name is the same as the parent bean -->
+    class="org.springframework.aop.framework.ProxyFactoryBean">
+    <property name="target">
+        <ref parent="accountService"/> <!-- notice how we refer to the parent bean -->
+    </property>
+    <!-- insert other configuration and dependencies as required here -->
+</bean>
+```
+```
+4.0 beans xsd不再支持local该ref元素的属性，因为它不再提供常规bean引用的值。只需将现有ref local引用更改为ref bean升级到4.0架构。
+```
+内部bean
+一个<bean>元素的元件<property/>或<constructor-arg/>元件定义了一个所谓的内部bean.
+```xml
+<bean id="outer" class="...">
+    <!-- instead of using a reference to a target bean, simply define the target bean inline -->
+    <property name="target">
+        <bean class="com.example.Person"> <!-- this is the inner bean -->
+            <property name="name" value="Fiona Apple"/>
+            <property name="age" value="25"/>
+        </bean>
+    </property>
+</bean>
+```
+
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
