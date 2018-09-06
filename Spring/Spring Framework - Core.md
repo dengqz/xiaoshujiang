@@ -1276,7 +1276,36 @@ bean的非单例原型范围部署导致每次发出对该特定bean的请求时
 ```xml
 <bean id="accountService" class="com.foo.DefaultAccountService" scope="prototype"/>
 ```
+与其他作用域相比，Spring不管理原型bean的完整生命周期：容器实例化，配置和组装原型对象，并将其交给客户端，而不再记录该原型实例。因此，尽管无论范围如何都在所有对象上调用初始化生命周期回调方法，但在原型的情况下，不会调用已配置的销毁 生命周期回调。客户端代码必须清理原型范围的对象并释放原型bean所持有的昂贵资源。要让Spring容器释放原型范围的bean所拥有的资源，请尝试使用自定义bean后处理器，它包含对需要清理的bean的引用。
 
+在某些方面，Spring容器关于原型范围bean的角色是Java new运算符的替代品。超过该点的所有生命周期管理必须由客户端处理。（有关Spring容器中bean的生命周期的详细信息，请参阅Lifecycle回调。）
+#### 1.5.3. 具有原型bean依赖关系的单例bean
+当您使用具有依赖于原型bean的单例作用域bean时，请注意 在实例化时解析依赖项。因此，如果依赖项将原型范围的bean注入到单例范围的bean中，则会实例化一个新的原型bean，然后将依赖注入到单例bean中。原型实例是唯一提供给单例范围bean的实例。
+
+但是，假设您希望单例范围的bean在运行时重复获取原型范围的bean的新实例。您不能将原型范围的bean依赖注入到您的单例bean中，因为当Spring容器实例化单例bean并解析并注入其依赖项时，该注入只发生 一次。如果您需要在运行时多次使用原型bean的新实例，请参阅方法注入
+#### 1.5.4. 请求，会话，应用程序和WebSocket范围
+在request，session，application，和websocket范围是仅如果使用基于web的Spring可ApplicationContext实现（如 XmlWebApplicationContext）。如果你将这些范围与常规的Spring IoC容器一起使用ClassPathXmlApplicationContext，那么IllegalStateException就会抛出一个抱怨未知bean范围的东西。
+
+初始Web配置
+为了支持豆的范围界定在request，session，application，和 websocket（即具有web作用域bean），需要做少量的初始配置定义你的豆之前。（这是初始设置不必需的标准范围，singleton和prototype）。
+
+如何完成此初始设置取决于您的特定Servlet环境。
+
+如果您在Spring Web MVC中访问scoped bean，实际上是在Spring处理的请求中DispatcherServlet，则不需要特殊设置： DispatcherServlet已经公开了所有相关状态。
+
+如果您使用Servlet 2.5 Web容器，并且在Spring之外处理请求 DispatcherServlet（例如，使用JSF或Struts时），则需要注册 org.springframework.web.context.request.RequestContextListener ServletRequestListener。对于Servlet 3.0+，可以通过WebApplicationInitializer 界面以编程方式完成。或者，或者对于旧容器，将以下声明添加到Web应用程序的web.xml文件中：
+```xml
+<web-app>
+    ...
+    <listener>
+        <listener-class>
+            org.springframework.web.context.request.RequestContextListener
+        </listener-class>
+    </listener>
+    ...
+</web-app>
+```
+或者，如果您的侦听器设置存在问题，请考虑使用Spring RequestContextFilter。过滤器映射取决于周围的Web应用程序配置，因此您必须根据需要进行更改。
 
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
