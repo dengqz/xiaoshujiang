@@ -161,7 +161,21 @@ beans {
     }
 }
 ```
+此配置样式在很大程度上等同于XML bean定义，甚至支持Spring的XML配置命名空间。它还允许通过“importBeans”指令导入XML bean定义文件。
+#### 1.2.3. 使用容器
+它ApplicationContext是高级工厂的接口，能够维护不同bean及其依赖项的注册表。使用该方法，T getBean(String name, Class<T> requiredType)您可以检索Bean的实例。
 
+在ApplicationContext可以读取bean定义并访问它们，如下所示：
+```java?linenums
+// create and configure beans
+ApplicationContext context = new ClassPathXmlApplicationContext("services.xml", "daos.xml");
+
+// retrieve configured instance
+PetStoreService service = context.getBean("petStore", PetStoreService.class);
+
+// use configured instance
+List<String> userList = service.getUsernameList();
+```
 ### 1.3. Bean概述
 ### 1.4. 依赖
 ### 1.5. Bean 范围
