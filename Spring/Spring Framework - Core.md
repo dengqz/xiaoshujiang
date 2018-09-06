@@ -196,6 +196,7 @@ context.refresh();
 
 然后，您可以使用它getBean来检索Bean的实例。该ApplicationContext 接口还有一些其他方法可用于检索bean，但理想情况下，您的应用程序代码绝不应使用它们。实际上，您的应用程序代码根本不应该调用该 getBean()方法，因此根本不依赖于Spring API。例如，Spring与Web框架的集成为各种Web框架组件（如控制器和JSF托管bean）提供依赖注入，允许您通过元数据（例如自动装配注释）声明对特定bean的依赖性。
 ### 1.3. Bean概述
+
 ### 1.4. 依赖
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
