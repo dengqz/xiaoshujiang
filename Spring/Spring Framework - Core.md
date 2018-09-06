@@ -394,6 +394,75 @@ public class SimpleMovieLister {
     // business logic that actually uses the injected MovieFinder is omitted...
 }
 ```
+构造函数参数解析
+使用参数的类型进行构造函数参数解析匹配。如果bean定义的构造函数参数中不存在潜在的歧义，那么在bean定义中定义构造函数参数的顺序是在实例化bean时将这些参数提供给适当的构造函数的顺序。考虑以下课程：
+```java
+package x.y;
+
+public class Foo {
+
+    public Foo(Bar bar, Baz baz) {
+        // ...
+    }
+}
+```
+假设Bar并且Baz类与继承无关，则不存在潜在的歧义。因此，以下配置工作正常，您不需要在<constructor-arg/> 元素中显式指定构造函数参数索引和/或类型。
+```xml
+<beans>
+    <bean id="foo" class="x.y.Foo">
+        <constructor-arg ref="bar"/>
+        <constructor-arg ref="baz"/>
+    </bean>
+
+    <bean id="bar" class="x.y.Bar"/>
+
+    <bean id="baz" class="x.y.Baz"/>
+</beans>
+```
+当引用另一个bean时，类型是已知的，并且可以进行匹配（与前面的示例一样）。当使用简单类型时，例如 <value>true</value>，Spring无法确定值的类型，因此无法在没有帮助的情况下按类型进行匹配。考虑以下课程：
+```java
+package examples;
+
+public class ExampleBean {
+
+    // Number of years to calculate the Ultimate Answer
+    private int years;
+
+    // The Answer to Life, the Universe, and Everything
+    private String ultimateAnswer;
+
+    public ExampleBean(int years, String ultimateAnswer) {
+        this.years = years;
+        this.ultimateAnswer = ultimateAnswer;
+    }
+}
+```
+构造函数参数类型匹配
+在前面的场景中，如果使用属性显式指定构造函数参数的类型，则容器可以使用与简单类型匹配的类型type。例如：
+```xml
+<bean id="exampleBean" class="examples.ExampleBean">
+    <constructor-arg type="int" value="7500000"/>
+    <constructor-arg type="java.lang.String" value="42"/>
+</bean>
+```
+构造函数参数索引
+使用该index属性显式指定构造函数参数的索引。例如：
+```xml
+<bean id="exampleBean" class="examples.ExampleBean">
+    <constructor-arg index="0" value="7500000"/>
+    <constructor-arg index="1" value="42"/>
+</bean>
+```
+除了解决多个简单值的歧义之外，指定索引还可以解决构造函数具有相同类型的两个参数的歧义。请注意， 索引基于0。
+
+构造函数参数名称
+您还可以使用构造函数参数名称进行值消歧：
+```xml
+<bean id="exampleBean" class="examples.ExampleBean">
+    <constructor-arg name="years" value="7500000"/>
+    <constructor-arg name="ultimateAnswer" value="42"/>
+</bean>
+```
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
