@@ -1036,8 +1036,204 @@ Spring容器可以自动连接协作bean之间的关系。您可以通过检查�
 |     |     |
 |     |     |
 |     |     |
+使用byType或构造函数自动装配模式，您可以连接数组和类型集合。 在这种情况下，提供容器内与预期类型匹配的所有autowire候选者以满足依赖性。 如果预期的键类型为String，则可以自动装配强类型映射。 自动装配的Maps值将包含与预期类型匹配的所有Bean实例，而Maps键将包含相应的bean名称。
 
+您可以将autowire行为与依赖性检查相结合，这将在自动装配完成后执行。
+自动装配的局限和缺点
+自动装配在项目中一致使用时效果最佳。 如果一般不使用自动装配，那么开发人员使用它来连接一个或两个bean定义可能会让人感到困惑。
+考虑自动装配的局限和缺点：
+- property和constructor-arg设置中的显式依赖项始终覆盖自动装配。 您无法自动装配所谓的简单属性，例如基元，字符串和类（以及此类简单属性的数组）。 这种限制是按设计的。
 
+- 自动装配不如显式布线精确。 虽然如上表所示，Spring会小心避免在可能产生意外结果的歧义的情况下进行猜测，但不再明确记录Spring管理对象之间的关系。
+
+- 可能无法为可能从Spring容器生成文档的工具提供接线信息。
+
+- 容器中的多个bean定义可能与要自动装配的setter方法或构造函数参数指定的类型匹配。 对于数组，集合或地图，这不一定是个问题。 但是，对于期望单个值的依赖关系，这种模糊性不是任意解决的。 如果没有可用的唯一bean定义，则抛出异常。
+
+在后一种情况下，您有几种选择：
+- 放弃自动装配以支持显式布线。
+
+- 通过将autowire-candidate属性设置为false，避免对bean定义进行自动装配，如下一节所述。
+
+- 通过将其<bean />元素的primary属性设置为true，将单个bean定义指定为主要候选者。
+
+- 如基于注释的容器配置中所述，实现基于注释的配置可用的更精细控制。
+
+从自动装配中排除一个bean
+在每个bean的基础上，您可以从自动装配中排除bean。 在Spring的XML格式中，将<bean />元素的autowire-candidate属性设置为false; 容器使特定的bean定义对自动装配基础结构不可用（包括注释样式配置，如@Autowired）。
+```
+The autowire-candidate attribute is designed to only affect type-based autowiring. It does not affect explicit references by name, which will get resolved even if the specified bean is not marked as an autowire candidate. As a consequence, autowiring by name will nevertheless inject a bean if the name matches.
+```
+您还可以根据针对bean名称的模式匹配来限制autowire候选者。 顶级<beans />元素在其default-autowire-candidates属性中接受一个或多个模式。 例如，要将autowire候选状态限制为名称以Repository结尾的任何bean，请提供值* Repository。 要提供多个模式，请在逗号分隔的列表中定义它们。 bean定义autowire-candidate属性的显式值true或false始终优先，对于此类bean，模式匹配规则不适用。
+
+这些技术对于您永远不希望通过自动装配注入其他bean的bean非常有用。 这并不意味着排除的bean本身不能使用自动装配进行配置。 相反，bean本身不是自动装配其他bean的候选者。
+#### 1.4.6. 方法注入
+在大多数应用程序场景中，容器中的大多数bean都是 单例。当单例bean需要与另一个单例bean协作，或者非单例bean需要与另一个非单例bean协作时，通常通过将一个bean定义为另一个bean的属性来处理依赖关系。当bean生命周期不同时会出现问题。假设单例bean A需要使用非单例（原型）bean B，可能是在A上的每个方法调用上。容器只创建一次单例bean A，因此只有一次机会来设置属性。每次需要时，容器都不能为bean A提供bean B的新实例。
+
+解决方案是放弃一些控制反转。您可以通过实现接口使bean A了解容器ApplicationContextAware，并通过对容器进行getBean（“B”）调用，每次bean A需要时都要求（通常是新的）bean B实例。以下是此方法的示例：
+```java
+// a class that uses a stateful Command-style class to perform some processing
+package fiona.apple;
+
+// Spring-API imports
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+
+public class CommandManager implements ApplicationContextAware {
+
+    private ApplicationContext applicationContext;
+
+    public Object process(Map commandState) {
+        // grab a new instance of the appropriate Command
+        Command command = createCommand();
+        // set the state on the (hopefully brand new) Command instance
+        command.setState(commandState);
+        return command.execute();
+    }
+
+    protected Command createCommand() {
+        // notice the Spring API dependency!
+        return this.applicationContext.getBean("command", Command.class);
+    }
+
+    public void setApplicationContext(
+            ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
+    }
+}
+```
+前面的内容是不可取的，因为业务代码知道并耦合到Spring Framework。Method Injection是Spring IoC容器的一个高级功能，它允许以干净的方式处理这个用例。
+查找方法注入
+Lookup方法注入是容器覆盖容器托管bean上的方法的能力 ，以返回容器中另一个命名bean的查找结果。查找通常涉及原型bean，如上一节中描述的场景。Spring Framework通过使用CGLIB库中的字节码生成来实现此方法注入，以动态生成覆盖该方法的子类。
+```
+为了使这个动态子类工作，Spring bean容器将子类化的类不能final，并且要重写的方法也不能final。
+
+对具有abstract方法的类进行单元测试需要您自己对类进行子类化并提供该abstract方法的存根实现。
+
+组件扫描也需要具体方法，这需要具体的类别来获取。
+
+另一个关键限制是查找方法不适用于工厂方法，特别是@Bean配置类中的方法，因为容器在这种情况下不负责创建实例，因此无法在上面创建运行时生成的子类。飞。
+```
+查看CommandManager前面代码片段中的类，您会看到Spring容器将动态覆盖该createCommand() 方法的实现。您的CommandManager类将不具有任何Spring依赖项，如在重新编写的示例中可以看到的：
+```java
+package fiona.apple;
+
+// no more Spring imports!
+
+public abstract class CommandManager {
+
+    public Object process(Object commandState) {
+        // grab a new instance of the appropriate Command interface
+        Command command = createCommand();
+        // set the state on the (hopefully brand new) Command instance
+        command.setState(commandState);
+        return command.execute();
+    }
+
+    // okay... but where is the implementation of this method?
+    protected abstract Command createCommand();
+}
+```
+在包含要注入的方法的客户端类中（CommandManager在本例中），要注入的方法需要以下形式的签名：
+```xml
+<public|protected> [abstract] <return-type> theMethodName(no-arguments);
+```
+如果方法是abstract，则动态生成的子类实现该方法。否则，动态生成的子类将覆盖原始类中定义的具体方法。例如：
+```xml
+<!-- a stateful bean deployed as a prototype (non-singleton) -->
+<bean id="myCommand" class="fiona.apple.AsyncCommand" scope="prototype">
+    <!-- inject dependencies here as required -->
+</bean>
+
+<!-- commandProcessor uses statefulCommandHelper -->
+<bean id="commandManager" class="fiona.apple.CommandManager">
+    <lookup-method name="createCommand" bean="myCommand"/>
+</bean>
+```
+标识为commandManager的bean createCommand() 在需要myCommand bean 的新实例时调用自己的方法。您必须小心将myCommandbean 部署为原型，如果这实际上是需要的话。如果它是一个单例，myCommand 则每次都返回相同的bean 实例。
+
+或者，在基于注释的组件模型中，您可以通过@Lookup注释声明查找方法：
+```java
+public abstract class CommandManager {
+
+    public Object process(Object commandState) {
+        Command command = createCommand();
+        command.setState(commandState);
+        return command.execute();
+    }
+
+    @Lookup("myCommand")
+    protected abstract Command createCommand();
+}
+```
+或者，更具惯用性，您可以依赖于针对查找方法的声明返回类型解析目标bean：
+```java
+public abstract class CommandManager {
+
+    public Object process(Object commandState) {
+        MyCommand command = createCommand();
+        command.setState(commandState);
+        return command.execute();
+    }
+
+    @Lookup
+    protected abstract MyCommand createCommand();
+}
+```
+请注意，您通常会使用具体的存根实现来声明这种带注释的查找方法，以使它们与Spring的组件扫描规则兼容，其中默认情况下抽象类被忽略。此限制不适用于显式注册或显式导入的bean类。
+```
+访问不同范围的目标bean的另一种方法是ObjectFactory/ Provider注入点。将Scoped bean视为依赖项。
+
+感兴趣的读者也可以找到ServiceLocatorFactoryBean（在 org.springframework.beans.factory.config包中）使用。
+```
+任意方法更换
+与查找方法注入相比，一种不太有用的方法注入形式是能够使用另一个方法实现替换托管bean中的任意方法。用户可以安全地跳过本节的其余部分，直到实际需要该功能。
+
+使用基于XML的配置元数据，您可以使用该replaced-method元素将已存在的方法实现替换为已部署的bean。考虑以下类，使用方法computeValue，我们要覆盖它：
+```java
+public class MyValueCalculator {
+
+    public String computeValue(String input) {
+        // some real code...
+    }
+
+    // some other methods...
+}
+```
+实现org.springframework.beans.factory.support.MethodReplacer 接口的类提供新的方法定义。
+```java
+/**
+ * meant to be used to override the existing computeValue(String)
+ * implementation in MyValueCalculator
+ */
+public class ReplacementComputeValue implements MethodReplacer {
+
+    public Object reimplement(Object o, Method m, Object[] args) throws Throwable {
+        // get the input value, work with it, and return a computed result
+        String input = (String) args[0];
+        ...
+        return ...;
+    }
+}
+```
+部署原始类并指定方法覆盖的bean定义如下所示：
+```xml
+<bean id="myValueCalculator" class="x.y.z.MyValueCalculator">
+    <!-- arbitrary method replacement -->
+    <replaced-method name="computeValue" replacer="replacementComputeValue">
+        <arg-type>String</arg-type>
+    </replaced-method>
+</bean>
+
+<bean id="replacementComputeValue" class="a.b.c.ReplacementComputeValue"/>
+```
+您可以<arg-type/>在<replaced-method/> 元素中使用一个或多个包含的元素来指​​示被覆盖的方法的方法签名。仅当方法重载且类中存在多个变体时，才需要参数的签名。为方便起见，参数的类型字符串可以是完全限定类型名称的子字符串。例如，以下所有匹配 java.lang.String：
+```
+java.lang.String
+String
+Str
+```
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
