@@ -335,6 +335,40 @@ public class DefaultServiceLocator {
     }
 }
 ```
+一个工厂类也可以包含多个工厂方法，如下所示：
+```xml?linenums
+<bean id="serviceLocator" class="examples.DefaultServiceLocator">
+    <!-- inject any dependencies required by this locator bean -->
+</bean>
+
+<bean id="clientService"
+    factory-bean="serviceLocator"
+    factory-method="createClientServiceInstance"/>
+
+<bean id="accountService"
+    factory-bean="serviceLocator"
+    factory-method="createAccountServiceInstance"/>
+```
+```java?linenums
+public class DefaultServiceLocator {
+
+    private static ClientService clientService = new ClientServiceImpl();
+
+    private static AccountService accountService = new AccountServiceImpl();
+
+    public ClientService createClientServiceInstance() {
+        return clientService;
+    }
+
+    public AccountService createAccountServiceInstance() {
+        return accountService;
+    }
+}
+```
+这种方法表明可以通过依赖注入（DI）来管理和配置工厂bean本身。请参阅详细信息中的依赖关系和配置。
+```
+在Spring文档中，工厂bean指的是在Spring容器中配置的bean，它将通过实例或 静态工厂方法创建对象 。相反， FactoryBean（注意大写）指的是特定于Spring的 FactoryBean 。
+```
 ### 1.4. 依赖
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
