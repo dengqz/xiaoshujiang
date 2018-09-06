@@ -754,7 +754,76 @@ idref元素
     </property>
 </bean>
 ```
+内部bean定义不需要定义的id或名称; 如果指定，则容器不使用这样的值作为标识符。容器还会scope在创建时忽略标志：内部bean 始终是匿名的，并且始终使用外部bean创建它们。这是不是可以内部bean注入到协作bean以外进入封闭豆或独立访问它们。
 
+作为一个极端情况，可以从自定义范围接收销毁回调，例如，对于包含在单例bean中的请求范围的内部bean：内部bean实例的创建将绑定到其包含的bean，但是销毁回调允许它参与请求范围的生命周期。这不是常见的情况; 内部bean通常只是共享其包含bean的范围。
+
+集合
+在<list/>，<set/>，<map/>，和<props/>元素，你将Java的性能和参数Collection类型List，Set，Map，和Properties分别。
+```xml
+<bean id="moreComplexObject" class="example.ComplexObject">
+    <!-- results in a setAdminEmails(java.util.Properties) call -->
+    <property name="adminEmails">
+        <props>
+            <prop key="administrator">administrator@example.org</prop>
+            <prop key="support">support@example.org</prop>
+            <prop key="development">development@example.org</prop>
+        </props>
+    </property>
+    <!-- results in a setSomeList(java.util.List) call -->
+    <property name="someList">
+        <list>
+            <value>a list element followed by a reference</value>
+            <ref bean="myDataSource" />
+        </list>
+    </property>
+    <!-- results in a setSomeMap(java.util.Map) call -->
+    <property name="someMap">
+        <map>
+            <entry key="an entry" value="just some string"/>
+            <entry key ="a ref" value-ref="myDataSource"/>
+        </map>
+    </property>
+    <!-- results in a setSomeSet(java.util.Set) call -->
+    <property name="someSet">
+        <set>
+            <value>just some string</value>
+            <ref bean="myDataSource" />
+        </set>
+    </property>
+</bean>
+```
+映射键或值的值或设置值也可以是以下任何元素：
+```xml
+bean | ref | idref | list | set | map | props | value | null
+```
+合并合集
+Spring容器还支持集合的合并。应用程序开发人员可以定义一个父风格<list/>，<map/>，<set/>或<props/>元素，并有孩子式的<list/>，<map/>，<set/>或<props/>元素继承和父集合覆盖值。也就是说，子集合的值是合并父集合和子集合的元素的结果，子集合的元素覆盖父集合中指定的值。
+
+关于合并的这一部分讨论了父子bean机制。不熟悉父母和子bean定义的读者可能希望在继续之前阅读 相关部分。
+
+以下示例演示了集合合并：
+```xml
+<beans>
+    <bean id="parent" abstract="true" class="example.ComplexObject">
+        <property name="adminEmails">
+            <props>
+                <prop key="administrator">administrator@example.com</prop>
+                <prop key="support">support@example.com</prop>
+            </props>
+        </property>
+    </bean>
+    <bean id="child" parent="parent">
+        <property name="adminEmails">
+            <!-- the merge is specified on the child collection definition -->
+            <props merge="true">
+                <prop key="sales">sales@example.com</prop>
+                <prop key="support">support@example.co.uk</prop>
+            </props>
+        </property>
+    </bean>
+<beans>
+```
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
