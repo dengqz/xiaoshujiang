@@ -176,6 +176,22 @@ PetStoreService service = context.getBean("petStore", PetStoreService.class);
 // use configured instance
 List<String> userList = service.getUsernameList();
 ```
+使用Groovy配置，bootstrapping看起来非常相似，只是一个不同的上下文实现类，它是Groovy感知的（但也理解XML bean定义）：
+```java?linenums
+ApplicationContext context = new GenericGroovyApplicationContext("services.groovy", "daos.groovy");
+```
+最灵活的变体是GenericApplicationContext与读者代表结合使用，例如与XmlBeanDefinitionReaderXML文件一起使用：
+```java?linenums
+GenericApplicationContext context = new GenericApplicationContext();
+new XmlBeanDefinitionReader(context).loadBeanDefinitions("services.xml", "daos.xml");
+context.refresh();
+```
+或者GroovyBeanDefinitionReader对于Groovy文件：
+```java?linenums
+GenericApplicationContext context = new GenericApplicationContext();
+new GroovyBeanDefinitionReader(context).loadBeanDefinitions("services.groovy", "daos.groovy");
+context.refresh();
+```
 ### 1.3. Bean概述
 ### 1.4. 依赖
 ### 1.5. Bean 范围
