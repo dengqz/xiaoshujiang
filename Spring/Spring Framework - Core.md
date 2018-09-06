@@ -463,6 +463,21 @@ public class ExampleBean {
     <constructor-arg name="ultimateAnswer" value="42"/>
 </bean>
 ```
+请记住，要使这项工作开箱即用，必须在启用调试标志的情况下编译代码，以便Spring可以从构造函数中查找参数名称。如果无法使用debug标志编译代码（或者不希望），则可以使用 @ConstructorProperties JDK批注显式命名构造函数参数。然后，示例类必须如下所示：
+```java
+package examples;
+
+public class ExampleBean {
+
+    // Fields omitted
+
+    @ConstructorProperties({"years", "ultimateAnswer"})
+    public ExampleBean(int years, String ultimateAnswer) {
+        this.years = years;
+        this.ultimateAnswer = ultimateAnswer;
+    }
+}
+```
 ### 1.5. Bean 范围
 ### 1.6. 自定义bean的本质
 ### 1.7. Bean定义继承
