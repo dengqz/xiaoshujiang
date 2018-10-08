@@ -1881,8 +1881,75 @@ public interface BeanNameAware {
 |ServletConfigAware|当前ServletConfig容器中仅在基于web的Spring运行。有效 ApplicationContext|Spring MVC|
 |ServletContextAware|当前ServletContext容器中仅在基于web的Spring运行。有效 ApplicationContext|Spring MVC|
 
+
+
+再次注意，这些接口是使用您的代码与Spring的API，并且不遵循转控制的原则。因此，他们建议适用于要求容器编程访问的基础设施豆类。
+
 ### 1.7. Bean定义继承
+
+
+一个bean定义可以包含大量的配置信息，包括构造器参数，属性值，以及容器的特定信息，如初始化方法，静态工厂方法名等。子bean定义从父定义继承配置数据。儿童的定义可以覆盖一些值，或者添加一些它需要的。使用父子bean定义可以节省很多的输入工作。实际上，这是模板的一种形式。
+
+如果你有工作ApplicationContext接口编程，子bean定义所代表ChildBeanDefinition的类。大多数用户不跟他们在这个层面上的工作，而不是配置在声明类似的bean定义ClassPathXmlApplicationContext。当您使用基于XML的配置元数据，您可以指示使用一个子bean定义parent属性，指定父bean作为这个属性的值。
+```xml
+
+
+<bean id="inheritedTestBean" abstract="true"
+        class="org.springframework.beans.TestBean">
+    <property name="name" value="parent"/>
+    <property name="age" value="1"/>
+</bean>
+
+<bean id="inheritsWithDifferentClass"
+        class="org.springframework.beans.DerivedTestBean"
+        parent="inheritedTestBean" init-method="initialize">
+    <property name="name" value="override"/>
+    <!-- the age property value of 1 will be inherited from parent -->
+</bean>
+
+
+```
+
+
+子bean定义使用bean类从父定义，如果没有指定，但也可以覆盖它。在后一种情况下，孩子bean类必须与父母兼容的，也就是说，它必须接受父的属性值。
+
+子bean定义继承范围，构造函数参数值，属性值和方法覆盖从父，以增加新的价值的选项。任何范围，初始化方法，销毁方法，和/或static您指定将覆盖相应的父设置工厂方法设置。
+
+其余的设置总是从子定义处得到：依赖， 自动装配模式，依赖检查，单，延迟初始化。
+
+前面的例子中，通过使用显式地将父bean定义为抽象abstract属性。如果父定义并没有指定一个类，明确标记为父bean定义abstract是必需的，如下：
+```xml
+
+
+<bean id="inheritedTestBeanWithoutClass" abstract="true">
+    <property name="name" value="parent"/>
+    <property name="age" value="1"/>
+</bean>
+
+<bean id="inheritsWithClass" class="org.springframework.beans.DerivedTestBean"
+        parent="inheritedTestBeanWithoutClass" init-method="initialize">
+    <property name="name" value="override"/>
+    <!-- age will inherit the value of 1 from the parent bean definition-->
+</bean>
+
+
+```
+
+
+父豆不能对自己进行实例化，因为它是不完整的，并且它也明确标记为abstract。当一个定义是abstract这样的，它仅可使用作为一个纯粹的模板bean定义，充当子定义的父定义。尝试使用这样的abstract自身父bean，参照它作为其他bean的ref属性或做一个明确的getBean()与父bean的id调用，返回一个错误。同样地，容器的内部 preInstantiateSingletons()方法忽略被定义为抽象bean定义。
+```
+
+
+ApplicationContext默认情况下，预实例化所有singleton。因此，重要的是（至少对于单豆），如果你有，你打算只使用一个模板（父）bean定义，这个定义说明了一个类，你必须确保所设置的抽象属性为真，否则应用上下文将会（试着）预实例abstract豆。
+
+```
+
 ### 1.8. 集装箱扩建点
+
+
+通常，应用程序开发者不需要子类ApplicationContext 实现类。相反，Spring IoC容器可以通过特殊的集成接口实现扩展。接下来的几节将介绍这些集成接口。
+
+
 ### 1.9. 基于注释的容器配置
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
