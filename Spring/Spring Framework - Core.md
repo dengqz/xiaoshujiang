@@ -3593,6 +3593,361 @@ public class AppConfig  {
 当与标准的标注工作，是要知道，如下图所示的表中的一些显着功能不可用是很重要的：
 
 ### 1.12. 基于Java的容器配置
+#### 1.12.1. 基本概念：@Bean和@Configuration
+
+
+在Spring的Java的新配置支持，中央文物是 @Configuration-annotated类和@Bean-annotated方法。
+
+该@Bean注释被用于指示一个方法实例，配置和初始化为通过Spring IoC容器进行管理的新对象。对于那些熟悉Spring的<beans/>XML配置中的@Bean注释扮演了同样的角色<bean/>元素。您可以使用@Bean注解的方法与任何春天 @Component，然而，它们经常与使用@Configuration豆类。
+
+注释与类@Configuration表示其主要目的是作为bean定义的来源。此外，@Configuration类允许豆间的依赖关系，以通过简单地调用其他被定义@Bean在相同的类中的方法。可能最简单的@Configuration类内容如下：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public MyService myService() {
+        return new MyServiceImpl();
+    }
+}
+```
+
+
+在AppConfig上面的类将等同于翌年春季<beans/>XML：
+```xml
+
+
+<beans>
+    <bean id="myService" class="com.acme.services.MyServiceImpl"/>
+</beans>
+
+```
+```
+全@Configuration VS '精简版' @Bean模式？
+
+当@Bean方法被类中声明的不带注释 @Configuration它们被称为在一个“精简版”模式正在处理中。在声明的bean的方法@Component或甚至在一个普通的旧类将被视为“精简版”，与含类的不同主要目的和@Bean只是被一种奖金的方法存在。例如，服务的部件可以通过一个附加暴露管理视图到所述容器@Bean上的每个适用组件类方法。在这样的情况下，@Bean方法是一个简单的通用工厂方法机构。
+
+与完全@Configuration，精简版@Bean的方法不能声明bean间的依赖关系。相反，他们对自己的包含组件的内部状态，并可选的，他们可以声明的参数上操作。这种@Bean因此方法不应该调用其他 @Bean方法。每一个这样的方法是从字面上只是用于特定bean引用一个工厂的方法，无需任何特殊的运行时语义。这里正的副作用是，没有CGLIB子类具有在运行时被施加，所以有在类设计的术语（即含类可能仍然是没有限制final等）。
+
+在常见的情况，@Bean方法是将内声明的@Configuration类，确保“全”模式一直使用，因此交叉方法引用将重定向到容器的生命周期管理。这将防止同样的 @Bean意外正通过一个普通Java调用这有助于减少微妙的错误在“精简版”模式下运行时可能很难追查调用的方法。
+```
+
+
+的@Bean和@Configuration注解将在深度在下面的章节中讨论。但是，首先，我们将讨论创建一个使用基于Java的配置的Spring容器的各种方式。
+#### 1.12.2. 实例化使用AnnotationConfigApplicationContext Spring容器
+
+
+下面的文档Spring的各部分AnnotationConfigApplicationContext，新的春天3.0。这种多用途的ApplicationContext实现是能够接受不仅 @Configuration类作为输入，而且纯@Component的类和类与JSR-330的元数据注释。
+
+当@Configuration类作为输入提供的@Configuration类本身作为一个bean定义，并宣布所有@Bean的类中的方法也被注册为bean定义。
+
+当@Component被提供和JSR-330类，它们被登记为bean定义，并且假定DI元数据，例如@Autowired或者@Inject是这些类中使用的必要。
+结构简单
+
+以几乎相同的方式，实例化时，Spring的XML文件用作输入 ClassPathXmlApplicationContext，@Configuration类可以实例化时可用作输入AnnotationConfigApplicationContext。这允许Spring容器的完全免费的XML的使用情况：
+```java?linenums
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
+    MyService myService = ctx.getBean(MyService.class);
+    myService.doStuff();
+}
+```
+
+
+正如上面提到的，AnnotationConfigApplicationContext不限于只与工作@Configuration类。任何@Component或JSR-330注解的类可作为输入提供给构造提供。例如：
+```java?linenums
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(MyServiceImpl.class, Dependency1.class, Dependency2.class);
+    MyService myService = ctx.getBean(MyService.class);
+    myService.doStuff();
+}
+```
+
+
+以上假设MyServiceImpl，Dependency1并Dependency2使用Spring依赖注入注解，例如@Autowired。
+构建容器编程方式使用寄存器（类<？> ...）
+
+一个AnnotationConfigApplicationContext可以使用一个无参数的构造被实例化，然后使用配置的register()方法。这种方法是非常有用的，当编程的方式构建的AnnotationConfigApplicationContext。
+```java?linenums
+public static void main(String[] args) {
+    AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+    ctx.register(AppConfig.class, OtherConfig.class);
+    ctx.register(AdditionalConfig.class);
+    ctx.refresh();
+    MyService myService = ctx.getBean(MyService.class);
+    myService.doStuff();
+}
+```
+启用组件扫描与扫描（字符串...）
+
+为了使组件扫描，只需标注你的@Configuration类，如下所示：
+```java?linenums
+@Configuration
+@ComponentScan(basePackages = "com.acme")
+public class AppConfig  {
+    ...
+}
+```
+```
+
+
+经验丰富的Spring用户将熟悉XML声明相当于从Spring的的context:命名空间
+
+<beans>
+    <context:component-scan base-package="com.acme"/>
+</beans>
+
+```
+
+
+另外，在上述的例子中，com.acme包将被扫描，寻找任何 @Component-annotated类和这些类将被注册为在容器内的Spring bean定义。AnnotationConfigApplicationContext暴露 scan(String…​)，以允许相同的分量扫描功能的方法：
+```java?linenums
+
+
+另外，在上述的例子中，com.acme包将被扫描，寻找任何 @Component-annotated类和这些类将被注册为在容器内的Spring bean定义。AnnotationConfigApplicationContext暴露 scan(String…​)，以允许相同的分量扫描功能的方法：
+```
+```java?linenums
+public static void main(String[] args) {
+    AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+    ctx.scan("com.acme");
+    ctx.refresh();
+    MyService myService = ctx.getBean(MyService.class);
+}
+```
+```
+
+
+请记住，@Configuration类是元注释 用@Component，所以他们是组件扫描的候选人！在上面的例子中，假设AppConfig在中声明的com.acme封装（或任何包装的下面），它将被调用期间拾取scan()，并且在refresh()其所有的@Bean方法将被处理，并注册为在容器内豆的定义。
+
+```
+
+
+请记住，@Configuration类是元注释 用@Component，所以他们是组件扫描的候选人！在上面的例子中，假设AppConfig在中声明的com.acme封装（或任何包装的下面），它将被调用期间拾取scan()，并且在refresh()其所有的@Bean方法将被处理，并注册为在容器内豆的定义。
+```xml
+
+
+<web-app>
+    <!-- Configure ContextLoaderListener to use AnnotationConfigWebApplicationContext
+        instead of the default XmlWebApplicationContext -->
+    <context-param>
+        <param-name>contextClass</param-name>
+        <param-value>
+            org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+        </param-value>
+    </context-param>
+
+    <!-- Configuration locations must consist of one or more comma- or space-delimited
+        fully-qualified @Configuration classes. Fully-qualified packages may also be
+        specified for component-scanning -->
+    <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>com.acme.AppConfig</param-value>
+    </context-param>
+
+    <!-- Bootstrap the root application context as usual using ContextLoaderListener -->
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+
+    <!-- Declare a Spring MVC DispatcherServlet as usual -->
+    <servlet>
+        <servlet-name>dispatcher</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <!-- Configure DispatcherServlet to use AnnotationConfigWebApplicationContext
+            instead of the default XmlWebApplicationContext -->
+        <init-param>
+            <param-name>contextClass</param-name>
+            <param-value>
+                org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+            </param-value>
+        </init-param>
+        <!-- Again, config locations must consist of one or more comma- or space-delimited
+            and fully-qualified @Configuration classes -->
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>com.acme.web.MvcConfig</param-value>
+        </init-param>
+    </servlet>
+
+    <!-- map all requests for /app/* to the dispatcher servlet -->
+    <servlet-mapping>
+        <servlet-name>dispatcher</servlet-name>
+        <url-pattern>/app/*</url-pattern>
+    </servlet-mapping>
+</web-app>
+
+```
+#### 1.12.3. 使用@Bean注解
+
+
+@Bean是一个方法级注释和XML的直接模拟<bean/>元件。注释支持一些所提供的属性<bean/>，如： 初始化方法， 破坏法， 自动装配和name。
+
+你可以使用@Bean一个注释@Configuration-annotated或在 @Component-annotated类。
+声明一个bean
+
+要声明一个bean，只需用注释的方法@Bean的注释。您可以使用此方法内注册一个bean定义ApplicationContext指定为方法的返回值的类型。默认情况下，bean名称将是相同的方法名。下面是一个的一个简单的例子@Bean方法声明：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public TransferServiceImpl transferService() {
+        return new TransferServiceImpl();
+    }
+}
+```
+上述配置是完全等同于下面的Spring XML：
+```xml
+
+
+<beans>
+    <bean id="transferService" class="com.acme.TransferServiceImpl"/>
+</beans>
+
+```
+
+
+双方的声明作出的bean transferService中可用 ApplicationContext，势必类的对象实例TransferServiceImpl：
+
+
+双方的声明作出的bean transferService中可用 ApplicationContext，势必类的对象实例TransferServiceImpl：
+```
+transferService  - > com.acme.TransferServiceImpl
+```
+
+您也可以宣布你@Bean用的接口（或基类）的返回类型的方法：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public TransferService transferService() {
+        return new TransferServiceImpl();
+    }
+}
+```
+
+
+然而，这限制了用于事先预测类型的可见性，以指定的接口类型（TransferService）然后，用全类型（TransferServiceImpl）仅一次受影响的单豆已经被实例化已知的容器。非懒单豆获得根据自己的声明顺序初始化，所以这取决于当其他组件试图通过非声明的类型相匹配的（比如你可能会看到不同类型的匹配结果@Autowired TransferServiceImpl 这一次的“transferService”豆已经将只解决实例化）。
+```
+
+
+如果你一直被申报服务接口是指你的类型，你的 @Bean返回类型可以放心地加入该设计决策。然而，对于实现多个接口组件或通过其实施类型可能提及的部件，是比较安全的声明最具体的返回类型可能（至少需要通过注射点指的是你的bean作为特定的）。
+
+```
+豆依赖
+
+甲@Bean注解的方法可以具有描述构建豆所需要的依赖关系的参数的任意数量。例如，如果我们TransferService 需要AccountRepository，我们可以通过物化的方法参数的依赖：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public TransferService transferService(AccountRepository accountRepository) {
+        return new TransferServiceImpl(accountRepository);
+    }
+}
+```
+
+
+该解决机制是几乎等同于基于构造函数的依赖注入，见相关章节了解更多详情。
+接收生命周期回调
+
+与定义的任何类@Bean注释支持定时生命周期回调，可以使用@PostConstruct并@PreDestroy注解从JSR-250，见 JSR-250注解进一步的细节。
+
+常规春天的生命周期回调的充分支持，以及。如果一个bean实现InitializingBean，DisposableBean或者Lifecycle，它们各自的方法是由容器调用。
+
+一套标准的*Aware如接口实现BeanFactoryAware， BeanNameAware， MessageSourceAware， 了ApplicationContextAware等也完全支持。
+
+该@Bean注释支持指定任意初始化和销毁回调方法，就像春天XML的init-method，并destroy-method在属性上的bean元素：
+```java?linenums
+public class Foo {
+
+    public void init() {
+        // initialization logic
+    }
+}
+
+public class Bar {
+
+    public void cleanup() {
+        // destruction logic
+    }
+}
+
+@Configuration
+public class AppConfig {
+
+    @Bean(initMethod = "init")
+    public Foo foo() {
+        return new Foo();
+    }
+
+    @Bean(destroyMethod = "cleanup")
+    public Bar bar() {
+        return new Bar();
+    }
+}
+```
+```
+
+
+默认情况下，豆类使用具有公共Java的配置定义close或shutdown 方法自动销毁回调入伍。如果你有一个公共 close或shutdown方法，你不希望它被称为当容器关闭时，只需添加@Bean(destroyMethod="")到您的bean定义禁用默认(inferred)模式。
+
+你可能要为你通过JNDI获得其生命周期的应用程序之外管理的资源做的，默认情况下。特别是，确保始终为做到这一点DataSource，因为它被称为是对Java EE应用服务器问题。
+
+@Bean(destroyMethod="")
+public DataSource dataSource() throws NamingException {
+    return (DataSource) jndiTemplate.lookup("MyDS");
+}
+
+此外，有@Bean方法，你通常会选择使用程序JNDI查找：可以使用Spring提供JndiTemplate/ JndiLocatorDelegate佣工或直JNDI InitialContext的使用，而不是JndiObjectFactoryBean这将迫使你声明的返回类型的变异FactoryBean类型，而不是实际的目标类型，使得它很难用在其他交叉引用调用@Bean的方法是打算指所提供的资源在这里。
+
+```
+
+
+当然，在的情况下Foo的上方，这将是同样是有效的调用init() 施工期间直接方法：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public Foo foo() {
+        Foo foo = new Foo();
+        foo.init();
+        return foo;
+    }
+
+    // ...
+}
+```
+当您直接在Java中工作，你可以做任何你与你喜欢的对象，并不总是需要依赖于容器的生命周期！
+指定bean的作用域
+使用@Scope注解
+
+您可以指定与定义你的bean @Bean注释应该有一个具体的范围。你可以使用任何在规定的标准范围的 Bean的作用域部分。
+
+默认范围singleton，但你可以用覆盖此@Scope注释：
+```java?linenums
+@Configuration
+public class MyConfiguration {
+
+    @Bean
+    @Scope("prototype")
+    public Encryptor encryptor() {
+        // ...
+    }
+}
+```
+@Scope和作用域代理
+
+Spring提供了通过范围的相关性问题的一种方便的方式 范围代理。使用XML配置时建立这样一个代理最简单的方法是<aop:scoped-proxy/>元件。用@Scope注解配置在Java中的豆类提供了与proxyMode属性相当的支持。默认为无代理（ScopedProxyMode.NO），但您可以指定ScopedProxyMode.TARGET_CLASS或ScopedProxyMode.INTERFACES。
+
+如果您端口从XML参考文档范围代理的例子（见前面的链接），我们@Bean使用Java，它看起来像下面这样：
+```java?linenums
+
+
+
 ### 1.13. 环境抽象
 ### 1.13. 注册LoadTimeWeaver
 ### 1.15. ApplicationContext的其他功能
