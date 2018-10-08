@@ -2070,6 +2070,169 @@ org.springframework.scripting.groovy.GroovyMessenger@272961
 
 
 ```
+RequiredAnnotationBeanPostProcessor示例
+
+在使用自定义结合使用回调接口或注解 BeanPostProcessor实施是扩展Spring IoC容器的常用手段。一个例子是Spring RequiredAnnotationBeanPostProcessor-一个 BeanPostProcessor实现附带这确保了对标有（任意的）注释豆JavaBean属性实际上（构造为）依赖注射用一个值Spring发行。
+#### 1.8.2. 定制配置元数据用的BeanFactoryPostProcessor
+
+
+接下来的扩展点，我们将看看是 org.springframework.beans.factory.config.BeanFactoryPostProcessor。此接口的语义是类似于那些的BeanPostProcessor，有一个主要的区别在于：BeanFactoryPostProcessor运行在豆配置元数据 ; 也就是说，Spring IoC容器允许BeanFactoryPostProcessor读取配置元数据，并可能修改它之前的容器实例之外的任何豆BeanFactoryPostProcessor秒。
+
+您可以配置多BeanFactoryPostProcessor秒，就可以控制这些顺序BeanFactoryPostProcessorS按设定的执行order性能。但是，你才可以设置该属性，如果BeanFactoryPostProcessor实现了 Ordered接口。如果你写你自己的BeanFactoryPostProcessor，你应该考虑实施Ordered过界面。咨询的的javadoc BeanFactoryPostProcessor和Ordered接口的更多细节。
+```
+
+
+如果你想改变实际的bean 实例（即，从配置元数据创建的对象），那么你反而需要使用BeanPostProcessor （在上述定制使用的BeanPostProcessor豆）。虽然在技术上是可行内与bean实例的工作BeanFactoryPostProcessor（例如，使用 BeanFactory.getBean()），这样做会导致过早豆实例，违反标准集装箱的生命周期。这可能会导致消极的副作用，如绕过豆后处理。
+
+此外，BeanFactoryPostProcessors的作用域每个容器。如果您所使用的容器，这只是相关的。如果定义BeanFactoryPostProcessor在一个容器中，将只适用于该容器中的bean定义。在一个容器中的Bean定义不会进行后处理由BeanFactoryPostProcessorS IN另一个容器，即使这两个容器都处在同一层次的一部分。
+
+```
+
+
+当它内部的声明的bean工厂后处理器自动执行 ApplicationContext，以更改应用到限定所述容器的结构的元数据。弹簧包括许多预定义的bean工厂后置处理器，比如PropertyOverrideConfigurer和 PropertyPlaceholderConfigurer。自定义BeanFactoryPostProcessor也可使用，例如，以注册自定义属性编辑器。
+
+一个ApplicationContext自动检测部署在它实现了任何豆BeanFactoryPostProcessor接口。它用这些豆子bean工厂后置处理器，在适当的时候。你可以象其它bean部署这些处理器后豆。
+```
+
+
+至于BeanPostProcessorS，你通常不希望配置 BeanFactoryPostProcessor为延迟初始化秒。如果没有其他bean的引用 Bean(Factory)PostProcessor，即后处理器将不会在所有的实例。因此，将其标记为延迟初始化将被忽略， Bean(Factory)PostProcessor会急切地实例化，即使你设定的 default-lazy-init属性true对你的声明<beans />元素。
+
+```
+例如：类名替代PropertyPlaceholderConfigurer
+
+您可以使用PropertyPlaceholderConfigurer从使用标准Java在一个单独的文件中的bean定义一些属性值Properties的格式。这样做使应用程序部署到自定义具体环境的属性，如数据库URL和密码的人，没有复杂性或修改主XML定义文件或文件容器的风险。
+
+考虑以下基于XML的配置元数据片段，其中DataSource 与占位符值被定义。该示例示出了从外部配置的属性Properties文件。在运行时，PropertyPlaceholderConfigurer施加到将替换dataSource的一些性质的元数据。的值，以取代被指定为占位符形式的${property-name}随后的蚂蚁/ log4j的/ JSP EL风格。
+```xml
+
+
+<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    <property name="locations" value="classpath:com/foo/jdbc.properties"/>
+</bean>
+
+<bean id="dataSource" destroy-method="close"
+        class="org.apache.commons.dbcp.BasicDataSource">
+    <property name="driverClassName" value="${jdbc.driverClassName}"/>
+    <property name="url" value="${jdbc.url}"/>
+    <property name="username" value="${jdbc.username}"/>
+    <property name="password" value="${jdbc.password}"/>
+</bean>
+
+
+```
+
+
+实际值来自于标准的Java另一种文件Properties格式：
+```
+
+
+jdbc.driverClassName = org.hsqldb.jdbcDriver 
+jdbc.url = JDBC：HSQLDB：HSQL：//生产：9002 
+jdbc.username = SA 
+jdbc.password =根
+
+
+```
+
+
+因此，字符串${jdbc.username}替换在与值“SA”运行时，并且同样适用于匹配在属性文件密钥，其他占位符值。在PropertyPlaceholderConfigurer为大多数属性和bean定义的属性占位符检查。此外，占位符前缀和后缀可以定制。
+
+随着context在Spring 2.5中引入的命名空间，也可以用专用的配置元素配置属性的占位符。一个或多个位置可以如逗号分隔的列表中提供location属性。
+```xml
+
+
+<context:property-placeholder location="classpath:com/foo/jdbc.properties"/>
+
+
+```
+
+
+在PropertyPlaceholderConfigurer不仅将查找在属性Properties 指定的文件。默认情况下，它还会检查在Java的System性能，如果它不能找到指定的属性文件的属性。您可以通过设置自定义此行为systemPropertiesMode有以下三种支持整数值之一的配置者的财产：
+
+- 从来没有（0）：从不检查系统属性
+- 回退（1）：如果在指定的属性文件中不能解决的检查系统属性。这是默认的。
+- 覆盖（2）：首先检查系统属性，试图指定的属性文件之前。这允许系统属性来覆盖任何其他属性源。
+
+咨询PropertyPlaceholderConfigurer了解更多信息的javadoc。
+```xml
+
+
+您可以使用PropertyPlaceholderConfigurer替代类名，有时它是有用时，你必须选择一个特定的实现类在运行时。例如：
+
+<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    <property name="locations">
+        <value>classpath:com/foo/strategy.properties</value>
+    </property>
+    <property name="properties">
+        <value>custom.strategy.class=com.foo.DefaultStrategy</value>
+    </property>
+</bean>
+
+<bean id="serviceStrategy" class="${custom.strategy.class}"/>
+
+如果类不能在运行时被解析为一个有效的类，bean的分辨率，当它即将被创造，这是在失败preInstantiateSingletons() 的阶段ApplicationContext对非延迟实例化的bean。
+
+```
+例：PropertyOverrideConfigurer
+
+在PropertyOverrideConfigurer另一个bean工厂后置处理器，类似 PropertyPlaceholderConfigurer，但不同的是后者，原来的定义可以有缺省值或者根本没有值的bean属性。如果一个压倒一切的 Properties文件没有某个bean属性的内容，则使用缺省的上下文定义。
+
+需要注意的是bean定义为 没有意识到被覆盖，所以它不是从正在使用覆盖配置XML定义文件立即明显。在多的情况下，PropertyOverrideConfigurer对于相同的bean属性，最后一胜，由于覆盖机制定义不同值的实例。
+
+Properties文件的配置采用这种格式：
+```
+beanName.property =值
+```
+例如:
+```
+
+
+dataSource.driverClassName = com.mysql.jdbc.Driver 
+dataSource.url = JDBC：MySQL的的的：MYDB
+
+
+```
+
+
+这个例子文件可以包含一个名为豆的容器定义中使用 数据源，其中有驱动程序和URL的属性。
+
+组合的属性名称也支持，只要被覆盖的路径除了最后一个属性的每个组件已非空（比如通过构造器初始化）。在这个例子中...
+```
+foo.fred.bob.sammy = 123
+```
+
+
+    在sammy该财产bob的财产fred的财产foobean被设置为标量值123。
+
+```
+
+
+指定覆盖值始终是文字值; 他们没有转化成Bean引用。当XML bean定义的原始值指定bean引用该约定也适用。
+```
+
+
+随着context在Spring 2.5中引入的命名空间，可以配置属性压倒一切有专用的配置元素：
+```xml
+<context:property-override location="classpath:override.properties"/>
+```
+#### 1.8.3. 自定义实例化逻辑与一个FactoryBean
+
+
+落实org.springframework.beans.factory.FactoryBean为对象的接口 有自己的工厂。
+
+该FactoryBean接口是一个点的可插入到Spring IoC容器的实例化逻辑。如果您有在Java中更好的表现，而不是XML的（可能）冗长的复杂的初始化代码，你可以创建自己的 FactoryBean，那个类中写入复杂的初始化，然后把你定制的FactoryBean容器中。
+
+该FactoryBean接口提供了三种方法：
+
+    Object getObject()：返回该工厂创建的对象的实例。这个实例可能依赖于该工厂是否返回singleton或原型被共享。
+
+    boolean isSingleton()：返回true如果FactoryBean返回单身， false否则。
+
+    Class getObjectType()：返回由返回的对象类型getObject()的方法或null，如果该类型不是预先已知的。
+
+该FactoryBean概念和接口被一些Spring框架内的地方使用; 在超过50个实现FactoryBean接口船，Spring本身。
+
+当你需要问一个容器实际FactoryBean实例本身，而不是它创建的bean，前言bean的ID和连字符（&调用时）getBean()的方法ApplicationContext。因此，对于一个给定的FactoryBean 用的ID myBean，调用getBean("myBean")在容器上返回的产品FactoryBean; 然而，调用getBean("&myBean")返回的 FactoryBean实例本身。
 
 ### 1.9. 基于注释的容器配置
 ### 1.10. 类路径扫描和托管组件
