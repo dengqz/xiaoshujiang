@@ -3945,6 +3945,417 @@ Spring提供了通过范围的相关性问题的一种方便的方式 范围代�
 
 如果您端口从XML参考文档范围代理的例子（见前面的链接），我们@Bean使用Java，它看起来像下面这样：
 ```java?linenums
+// an HTTP Session-scoped bean exposed as a proxy
+@Bean
+@SessionScope
+public UserPreferences userPreferences() {
+    return new UserPreferences();
+}
+
+@Bean
+public Service userService() {
+    UserService service = new SimpleUserService();
+    // a reference to the proxied userPreferences bean
+    service.setUserPreferences(userPreferences());
+    return service;
+}
+```
+定制豆命名
+
+默认情况下，配置类使用@Bean方法的名称所产生的bean的名字。该功能可覆盖然而，与name属性。
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean(name = "myFoo")
+    public Foo foo() {
+        return new Foo();
+    }
+}
+```
+豆走样
+
+正如所讨论的命名豆，有时希望以给出单个豆多个名称，否则称为豆混叠。所述name的的属性@Bean 注释接受用于此目的的字符串数组。
+```java?linenums
+豆走样
+
+正如所讨论的命名豆，有时希望以给出单个豆多个名称，否则称为豆混叠。所述name的的属性@Bean 注释接受用于此目的的字符串数组。
+```
+豆说明
+
+有时它是有帮助的，以提供一个bean的更详细的文字描述。当豆暴露（可能通过JMX）用于监测目的这可以是特别有用的。
+
+为了说明添加到@Bean的 @Description 注释，可以使用：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    @Description("Provides a basic example of a bean")
+    public Foo foo() {
+        return new Foo();
+    }
+}
+```
+#### 1.12.4. 使用@Configuration注解
+
+
+@Configuration是指示对象是bean定义源的类级注释。@Configuration班宣布通过公共豆@Bean注解的方法。调用@Bean的方法@Configuration类也可以用于定义bean间的依赖关系。请参阅基本概念：@Bean和@Configuration了总体介绍。
+注射bean间的依赖关系
+
+当@Bean■找上彼此依存关系，表达该依赖性是为具有一个bean方法调用另一个简单：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public Foo foo() {
+        return new Foo(bar());
+    }
+
+    @Bean
+    public Bar bar() {
+        return new Bar();
+    }
+}
+```
+
+
+在上面的例子中，foo豆接收参考到bar经由构造器注入。
+```
+ 	
+
+声明bean间的依赖关系的这种方法只有在工作@Bean方法是内声明的@Configuration类。你不能声明使用普通的bean间的依赖关系@Component类。
+```
+查找方法注射
+
+正如前面提到的，查询方法注入是一种先进的功能，你应该很少使用。它是在一个单作用域的bean对prototype作用域的bean的依赖情况下非常有用。使用Java进行这种类型的配置提供了一种实现这种图案的自然方式。
+```java?linenums
+public abstract class CommandManager {
+    public Object process(Object commandState) {
+        // grab a new instance of the appropriate Command interface
+        Command command = createCommand();
+        // set the state on the (hopefully brand new) Command instance
+        command.setState(commandState);
+        return command.execute();
+    }
+
+    // okay... but where is the implementation of this method?
+    protected abstract Command createCommand();
+}
+```
+
+
+使用Java的配置支持，您可以创建一个子类CommandManager，其中的抽象createCommand()方法，以这样一种方式，它看起来了一个新的（原型）命令对象覆盖：
+```java?linenums
+@Bean
+@Scope("prototype")
+public AsyncCommand asyncCommand() {
+    AsyncCommand command = new AsyncCommand();
+    // inject dependencies here as required
+    return command;
+}
+
+@Bean
+public CommandManager commandManager() {
+    // return new anonymous implementation of CommandManager with command() overridden
+    // to return a new prototype Command object
+    return new CommandManager() {
+        protected Command createCommand() {
+            return asyncCommand();
+        }
+    }
+}
+```
+有关基于Java的配置内部是如何工作的更多信息
+
+下面的例子显示了一个@Bean注释的方法被调用两次：
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public ClientService clientService1() {
+        ClientServiceImpl clientService = new ClientServiceImpl();
+        clientService.setClientDao(clientDao());
+        return clientService;
+    }
+
+    @Bean
+    public ClientService clientService2() {
+        ClientServiceImpl clientService = new ClientServiceImpl();
+        clientService.setClientDao(clientDao());
+        return clientService;
+    }
+
+    @Bean
+    public ClientDao clientDao() {
+        return new ClientDaoImpl();
+    }
+}
+```
+
+
+clientDao()一旦已经在叫clientService1()，一次在clientService2()。由于此方法创建一个新的实例ClientDaoImpl并返回它，你通常会期望有2个实例（每个服务）。那肯定是有问题的：在春季，实例化豆的singleton默认范围。这是魔术进来：所有的@Configuration类都在启动时使用的子类CGLIB。在子类中，子方法检查容器第一对任何缓存的（作用域）豆，它调用父类的方法，并创建一个新的实例之前。注意，春季3.2，它是不再需要CGLIB添加到您的类路径，因为CGLIB类已下重新包装org.springframework.cglib和弹簧芯JAR中直接包含。
+
+
+
+该行为可以根据你的bean的范围是不同的。我们在这里谈论单身。
+```
+
+
+还有，由于这样的事实，CGLIB动态在启动时增加了功能，有一些限制，特别是配置类绝不能是最终。然而，如为4.3，任何构造允许上配置类，包括使用的 @Autowired或用于默认注射单个非默认构造函数声明。
+
+如果你喜欢，以避免任何CGLIB强加的限制，考虑宣布你@Bean 对非方法@Configuration类，例如在普通@Component类来代替。跨方法调用之间的@Bean方法将不会拦截的话，所以你必须在构造函数或方法级别有完全依赖于依赖注入。
+```
+#### 1.12.5. 撰写基于Java的配置
+使用@Import注解
+
+多为<import/>元素用于Spring的XML文件中的模块化配置，以帮助时，@Import注释允许加载@Bean从另一个配置类定义：
+```java?linenums
+@Configuration
+public class ConfigA {
+
+    @Bean
+    public A a() {
+        return new A();
+    }
+}
+
+@Configuration
+@Import(ConfigA.class)
+public class ConfigB {
+
+    @Bean
+    public B b() {
+        return new B();
+    }
+}
+```
+
+
+现在，而不需要同时指定ConfigA.class和ConfigB.class实例化上下文时，只ConfigB需要明确地提供：
+```java?linenums
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(ConfigB.class);
+
+    // now both beans A and B will be available...
+    A a = ctx.getBean(A.class);
+    B b = ctx.getBean(B.class);
+}
+```
+
+
+这种方法简化了容器实例化，因为只有一个类需要加以处理，而不是要求开发商要记住潜在的大量的 @Configuration施工过程中的类。
+```
+
+
+由于Spring框架4.2，@Import还支持常规组件类，类似的参考AnnotationConfigApplicationContext.register方法。这是特别有用，如果你想避免组件扫描，使用一些配置类为切入点，明确界定所有组件。
+
+```
+进口@Bean定义注入依赖
+
+上面的例子中工作，但过于简单。在大多数实际情况下，豆类将有跨越配置类相互依存关系。当使用XML，这不是问题本身，因为没有涉及到的编译器，以及一个可以简单地声明 ref="someBean"，并相信Spring将容器初始化期间做出来。当然，在使用的时候@Configuration类，Java编译器放置在配置模型的约束，在向其他豆类引用必须是有效的Java语法。
+
+幸运的是，解决这个问题很简单。正如我们已经讨论的， @Bean方法可以具有描述豆依赖性参数的任意数量。让我们考虑一个更真实的场景与几个@Configuration 班，每个取决于其他声明豆：
+```java?linenums
+@Configuration
+public class ServiceConfig {
+
+    @Bean
+    public TransferService transferService(AccountRepository accountRepository) {
+        return new TransferServiceImpl(accountRepository);
+    }
+}
+
+@Configuration
+public class RepositoryConfig {
+
+    @Bean
+    public AccountRepository accountRepository(DataSource dataSource) {
+        return new JdbcAccountRepository(dataSource);
+    }
+}
+
+@Configuration
+@Import({ServiceConfig.class, RepositoryConfig.class})
+public class SystemTestConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        // return new DataSource
+    }
+}
+
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(SystemTestConfig.class);
+    // everything wires up across configuration classes...
+    TransferService transferService = ctx.getBean(TransferService.class);
+    transferService.transfer(100.00, "A123", "C456");
+}
+```
+
+
+还有另一种方式来达到同样的效果。请记住，@Configuration类基本上只是在容器中另一个bean：这意味着他们可以利用 @Autowired和@Value注射等，就像任何其他的豆！
+```
+
+
+请确保你注入这种方式的依赖是最简单的一种而已。@Configuration 类上下文的初始化过程中很早就处理过，迫使依赖被注入这种方式可能会导致意想不到的早期初始化。只要有可能，诉诸于基于参数的喷射在上面的例子。
+
+此外，特别小心BeanPostProcessor，并BeanFactoryPostProcessor通过定义@Bean。那些通常应该声明为static @Bean方法，不触发其包含配置类的实例化。否则，@Autowired并且@Value不会对配置类本身，因为它是被作为一个bean实例创建太早上班。
+
+```
+```java?linenums
+Configuration
+public class ServiceConfig {
+
+    @Autowired
+    private AccountRepository accountRepository;
+
+    @Bean
+    public TransferService transferService() {
+        return new TransferServiceImpl(accountRepository);
+    }
+}
+
+@Configuration
+public class RepositoryConfig {
+
+    private final DataSource dataSource;
+
+    @Autowired
+    public RepositoryConfig(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @Bean
+    public AccountRepository accountRepository() {
+        return new JdbcAccountRepository(dataSource);
+    }
+}
+
+@Configuration
+@Import({ServiceConfig.class, RepositoryConfig.class})
+public class SystemTestConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        // return new DataSource
+    }
+}
+
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(SystemTestConfig.class);
+    // everything wires up across configuration classes...
+    TransferService transferService = ctx.getBean(TransferService.class);
+    transferService.transfer(100.00, "A123", "C456");
+}
+```
+```
+
+
+在构造器注入@Configuration类仅支持为Spring框架4.3。还需要注意的是，没有必要指定@Autowired，如果目标bean定义只有一个构造函数; 在上面的例子中，@Autowired不进行必要的RepositoryConfig构造函数。
+```
+完全合格的进口豆轻松导航
+
+在上述情况下，使用@Autowired效果良好，并提供所需的模块，但究竟确定在何处声明的自动装配bean定义仍然有些模糊。例如，作为一个开发者在看ServiceConfig，你怎么确切地知道该@Autowired AccountRepository豆声明？这不是在代码中明确，这可能只是罚款。请记住， 春天工具套件提供了工具，可以渲染图显示一切是如何连接起来-这可能是你所需要的。此外，你的Java IDE可以很容易地找到的所有声明和使用AccountRepository类型，很快就会显示出你的位置，@Bean即返回类型的方法。
+
+在情况下，这种模糊性是不能接受的，你想有直接的导航功能IDE内从一@Configuration类到另一个，可以考虑自动装配配置类本身：
+```java?linenums
+@Configuration
+public class ServiceConfig {
+
+    @Autowired
+    private RepositoryConfig repositoryConfig;
+
+    @Bean
+    public TransferService transferService() {
+        // navigate 'through' the config class to the @Bean method!
+        return new TransferServiceImpl(repositoryConfig.accountRepository());
+    }
+}
+```
+
+
+在上述情况下，它就是完全明确的AccountRepository定义。然而，ServiceConfig现在紧耦合RepositoryConfig; 这就是权衡。这种紧密耦合可以通过使用基于接口的或抽象的基于类的可有所减轻@Configuration类。考虑以下：
+```java?linenums
+@Configuration
+public class ServiceConfig {
+
+    @Autowired
+    private RepositoryConfig repositoryConfig;
+
+    @Bean
+    public TransferService transferService() {
+        return new TransferServiceImpl(repositoryConfig.accountRepository());
+    }
+}
+
+@Configuration
+public interface RepositoryConfig {
+
+    @Bean
+    AccountRepository accountRepository();
+}
+
+@Configuration
+public class DefaultRepositoryConfig implements RepositoryConfig {
+
+    @Bean
+    public AccountRepository accountRepository() {
+        return new JdbcAccountRepository(...);
+    }
+}
+
+@Configuration
+@Import({ServiceConfig.class, DefaultRepositoryConfig.class})  // import the concrete config!
+public class SystemTestConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        // return DataSource
+    }
+
+}
+
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(SystemTestConfig.class);
+    TransferService transferService = ctx.getBean(TransferService.class);
+    transferService.transfer(100.00, "A123", "C456");
+}
+```
+
+
+现在ServiceConfig是松耦合相对于混凝土 DefaultRepositoryConfig，并内置IDE工具仍然是有用的：它会很容易为开发者得到的类型层次RepositoryConfig的实现。以这种方式，导航@Configuration类和它们的依赖变得不大于导航基于接口的码的常规工艺不同。
+```
+
+
+如果你想影响某些豆类的启动创建顺序，考虑宣布一些为@Lazy（对于第一次访问，而不是在启动时创建）或@DependsOn某些其它豆类（确保特定的其他豆将在当前之前创建豆，超越了后者的直接依赖意味着什么）。
+```
+有条件包括@Configuration类或@Bean方法
+
+它往往是有用的有条件地启用或禁用一个完整的@Configuration类，甚至有个别@Bean方法的基础上，一些任意的系统状态。这方面的一个常见的例子是使用@Profile注释来激活豆只有当特定的个人资料已经在Spring中启用Environment（见Bean定义的配置文件 的详细信息）。
+
+该@Profile注释是使用所谓的更灵活的注释实际执行@Conditional。该@Conditional注释指示特定 org.springframework.context.annotation.Condition前应谘询的实施@Bean是注册。
+
+所述的实施方式中Condition接口简单地提供一个matches(…​) 返回的方法true或false。例如，下面是实际 Condition用于实施@Profile：
+```java?linenums
+@Override
+public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+    if (context.getEnvironment() != null) {
+        // Read the @Profile annotation attributes
+        MultiValueMap<String, Object> attrs = metadata.getAllAnnotationAttributes(Profile.class.getName());
+        if (attrs != null) {
+            for (Object value : attrs.get("value")) {
+                if (context.getEnvironment().acceptsProfiles(((String[]) value))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    return true;
+}
 ```
 
 
