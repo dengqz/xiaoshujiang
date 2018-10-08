@@ -2943,6 +2943,31 @@ public class SimpleMovieLister {
     }
 }
 ```
+```
+
+提供注解的名称解析由一个bean的名称 ApplicationContext，其中的CommonAnnotationBeanPostProcessor知道。名称可以通过JNDI，如果你配置Spring的解决 SimpleJndiBeanFactory 明确。不过，建议您依靠缺省行为与Spring的JNDI查找功能来保存间接的水平。
+```
+
+
+在专属情况下，@Resource不指定明确的名称，以及类似的使用@Autowired，@Resource发现的主要类型的比赛，而不是一个具体的bean并解决众所周知的解析依存关系：BeanFactory， ApplicationContext，ResourceLoader，ApplicationEventPublisher，和MessageSource 接口。
+
+因此，在下面的例子中，customerPreferenceDao场第一查找名为一个customerPreferenceDao豆，然后回落到主类型匹配的类型 CustomerPreferenceDao。的“上下文”字段是基于所述已知的可解析的依赖性型注入ApplicationContext。
+```java?linenums
+public class MovieRecommender {
+
+    @Resource
+    private CustomerPreferenceDao customerPreferenceDao;
+
+    @Resource
+    private ApplicationContext context;
+
+    public MovieRecommender() {
+    }
+
+    // ...
+}
+```
+
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
