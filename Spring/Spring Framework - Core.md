@@ -3434,6 +3434,23 @@ dependencies {
 
 ```
 ### 1.11. 使用JSR 330标准注释
+
+
+与Spring 3.0开始，Spring提供的JSR-330标准的标注（依赖注入）的支持。这些注释都以同样的方式，Spring的注解扫描。你只需要有相关的罐子在classpath。
+```
+
+
+如果您使用的是Maven，javax.inject神器是在标准Maven仓库（可 http://repo1.maven.org/maven2/javax/inject/javax.inject/1/）。您可以添加以下依赖于你的文件的pom.xml：
+
+<dependency>
+    <groupId>javax.inject</groupId>
+    <artifactId>javax.inject</artifactId>
+    <version>1</version>
+</dependency>
+
+
+```
+
 ### 1.12. 基于Java的容器配置
 ### 1.13. 环境抽象
 ### 1.13. 注册LoadTimeWeaver
