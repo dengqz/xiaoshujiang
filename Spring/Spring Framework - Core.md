@@ -1602,6 +1602,30 @@ beanFactory.registerScope("thread", threadScope);
 
 ### 1.6. 自定义bean的本质
 #### 1.6.1 生命周期回调
+
+
+为了与bean的生命周期的容器的管理相结合，可以实现在春季InitializingBean和DisposableBean接口。容器调用 afterPropertiesSet()了前者destroy()为后者允许bean在bean的初始化和销毁某些行动。
+```
+
+
+该JSR-250 @PostConstruct和@PreDestroy注解通常被认为在现代Spring应用程序接收生命周期回调的最佳实践。使用这些注解意味着你的豆子没有耦合到Spring特定接口。有关详情请参阅@PostConstruct和@PreDestroy。
+
+如果你不希望使用JSR-250注解，但你仍在寻找卸下联接考虑使用初始化方法和销毁法对象定义元数据。
+
+```
+
+
+在内部，Spring框架使用BeanPostProcessor实现来处理任何回调接口，它可以找到并调用相应的方法。如果您需要自定义特性或者生命周期行为不提供外的开箱，你可以实现BeanPostProcessor你自己。欲了解更多信息，请参阅 容器扩展点。
+
+除了初始化和销毁回调，Spring管理对象还可以实现Lifecycle接口，以便通过容器的自己的生命周期驱动这些对象可以参与的启动和关闭的过程。
+
+生命周期回调接口在本节描述。
+初始化回调
+
+该org.springframework.beans.factory.InitializingBean接口允许后对bean的所有必要属性容器设置一个bean来执行初始化的工作。的InitializingBean接口规定了一个方法：
+```java
+void afterPropertiesSet() throws Exception;
+```
 ### 1.7. Bean定义继承
 ### 1.8. 集装箱扩建点
 ### 1.9. 基于注释的容器配置
