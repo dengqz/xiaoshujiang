@@ -2316,7 +2316,27 @@ public class MovieRecommender {
     // ...
 }
 ```
+```
 
+
+由于Spring框架4.3的，一个@Autowired这样的构造注释不再是必要的，如果目标bean只定义了一个构造函数开始。但是，如果几个构造函数可用，必须至少有一个被标注教一个要使用的容器。
+```
+
+
+正如预期的那样，你还可以将@Autowired标注为“传统的” setter方法：
+```java?linenums
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Autowired
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    // ...
+}
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
