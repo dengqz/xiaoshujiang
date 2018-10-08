@@ -2663,7 +2663,24 @@ public @interface Genre {
     String value();
 }
 ```
+然后，你可以提供自定义的限定自动连接上的字段和参数：
+```java?linenums
+public class MovieRecommender {
 
+    @Autowired
+    @Genre("Action")
+    private MovieCatalog actionCatalog;
+
+    private MovieCatalog comedyCatalog;
+
+    @Autowired
+    public void setComedyCatalog(@Genre("Comedy") MovieCatalog comedyCatalog) {
+        this.comedyCatalog = comedyCatalog;
+    }
+
+    // ...
+}
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
