@@ -2503,7 +2503,38 @@ public class MovieRecommender {
 
 
 ```
+#### 1.9.3. 微调标注为基础自动装配与@Primary
 
+
+因为通过自动装配型可能会导致多个候选，它通常需要具有对选择过程的更多控制。做到这一点的方法之一是使用Spring的 @Primary注解。@Primary表明特定豆应优先考虑在多个豆都被装配到一个单值依赖候选人。如果只有一个“主”豆的候选人中存在，这将是自动装配Autowired值。
+
+假设我们有以下的配置定义firstMovieCatalog为 初级 MovieCatalog。
+```java?linenums
+@Configuration
+public class MovieConfiguration {
+
+    @Bean
+    @Primary
+    public MovieCatalog firstMovieCatalog() { ... }
+
+    @Bean
+    public MovieCatalog secondMovieCatalog() { ... }
+
+    // ...
+}
+```
+
+
+通过这样的结构，下面MovieRecommender将与被装配 firstMovieCatalog。
+```java?linenums
+public class MovieRecommender {
+
+    @Autowired
+    private MovieCatalog movieCatalog;
+
+    // ...
+}
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
