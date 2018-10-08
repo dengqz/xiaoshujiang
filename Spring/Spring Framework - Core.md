@@ -3378,7 +3378,62 @@ public class ActionMovieCatalog implements MovieCatalog {
     // ...
 }
 ```
+```java?linenums
+@Component
+@Genre("Action")
+public class ActionMovieCatalog implements MovieCatalog {
+    // ...
+}
+```
+```java?linenums
+@Component
+@Offline
+public class CachingMovieCatalog implements MovieCatalog {
+    // ...
+}
+```
+```
 
+
+与大多数基于注解的替代品，记住注解元数据是绑定到类定义本身，而使用XML允许多个豆 同一类型的，以提供其限定符元数据的变化，因为元数据是由每个提供-instance而不是每个类。
+
+```
+#### 1.10.9. 产生候选组件的索引
+
+
+虽然classpath中扫描速度非常快，可以通过在编译时产生候选人的静态列表，以改善大型应用程序的启动性能。在这种模式下，所有模块的应用程序必须使用此机制中，当 ApplicationContext检测到这样的指数，它会自动使用它，而不是在扫描类路径。
+
+生成索引，简单地添加一个额外的依赖于包含对于成分扫描指示靶成分的每个模块：
+```xml
+
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-context-indexer</artifactId>
+        <version>5.0.7.RELEASE</version>
+        <optional>true</optional>
+    </dependency>
+</dependencies>
+
+```
+或者，使用摇篮：
+```
+dependencies {
+    compileOnly("org.springframework:spring-context-indexer:5.0.7.RELEASE")
+}
+```
+这个过程中会产生META-INF/spring.components那将被包含在jar文件
+```xml
+
+当这种模式在IDE中工作时，spring-context-indexer必须注册为注释处理器，以确保该指数是最新的，当候选组件进行更新。
+```
+```xml
+
+
+当该指数自动启用META-INF/spring.components在类路径中。如果索引部分可用一些库（或用例），但整个应用程序无法建立，你可以回退到普通类路径列（如没有索引存在的话）通过设置spring.index.ignore到 true，无论是作为一个系统属性或以spring.properties在类路径的根文件。
+
+```
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
 ### 1.13. 环境抽象
