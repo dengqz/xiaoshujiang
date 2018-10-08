@@ -2337,6 +2337,119 @@ public class SimpleMovieLister {
     // ...
 }
 ```
+您也可以标注适用于具有任意名称和/或多个参数的方法：
+```java?linenums
+public class MovieRecommender {
+
+    private MovieCatalog movieCatalog;
+
+    private CustomerPreferenceDao customerPreferenceDao;
+
+    @Autowired
+    public void prepare(MovieCatalog movieCatalog,
+            CustomerPreferenceDao customerPreferenceDao) {
+        this.movieCatalog = movieCatalog;
+        this.customerPreferenceDao = customerPreferenceDao;
+    }
+
+    // ...
+}
+```
+
+
+你可以申请@Autowired到领域以及，甚至可以与构造混合：
+```java?linenums
+public class MovieRecommender {
+
+    private final CustomerPreferenceDao customerPreferenceDao;
+
+    @Autowired
+    private MovieCatalog movieCatalog;
+
+    @Autowired
+    public MovieRecommender(CustomerPreferenceDao customerPreferenceDao) {
+        this.customerPreferenceDao = customerPreferenceDao;
+    }
+
+    // ...
+}
+```
+```
+
+
+确保你的目标组件（例如MovieCatalog，CustomerPreferenceDao）始终得到您正在使用您的类型声明@Autowired-annotated注入点。否则注射可能因没有类型匹配发现在运行时失败。
+
+用于通过类路径扫描发现XML定义的豆或组件类，容器通常知道具体类型的前期。然而，对于@Bean工厂方法，你需要确保的是，声明的返回类型是足够的表现力。为了实现多个接口组件或通过其实施类型可能提及的部件，考虑你的工厂方法声明最具体的返回类型（至少需要通过注射点指的是你的bean作为特定的）。
+
+```
+
+
+另外，也可以提供所有从特定类型的豆 ApplicationContext通过添加注释到期望类型的数组的字段或方法：
+```java?linenums
+public class MovieRecommender {
+
+    @Autowired
+    private MovieCatalog[] movieCatalogs;
+
+    // ...
+}
+```
+这同样适用于类型集合：
+```java?linenums
+public class MovieRecommender {
+
+    private Set<MovieCatalog> movieCatalogs;
+
+    @Autowired
+    public void setMovieCatalogs(Set<MovieCatalog> movieCatalogs) {
+        this.movieCatalogs = movieCatalogs;
+    }
+
+    // ...
+}
+```
+```
+
+
+你的目标豆可以实现org.springframework.core.Ordered接口或使用@Order或标准@Priority，如果你想在数组或列表中的项目以特定的顺序进行排序注释。否则，它们的顺序将遵循在容器中的相应目标bean定义的登记顺序。
+
+所述@Order注释可以在目标类水平，而且也对被声明@Bean（在的多个定义的情况下用相同的bean类）的方法，有可能为每bean定义非常个体。@Order值可以在注入点影响的优先事项，但是请注意，它们不影响单启动顺序是由依赖关系，并确定正交关注@DependsOn声明。
+
+需要注意的是标准的javax.annotation.Priority注解是不可用的 @Bean级别，因为它不能在方法声明。其语义可以通过被建模@Order组合值与@Primary每个类型的单个豆。
+
+```
+
+
+即使输入地图可只要与期望的密钥类型是自动装配String。地图值将包含预期的类型的所有豆类和按键将包含相应的bean的名字：
+```java?linenums
+public class MovieRecommender {
+
+    private Map<String, MovieCatalog> movieCatalogs;
+
+    @Autowired
+    public void setMovieCatalogs(Map<String, MovieCatalog> movieCatalogs) {
+        this.movieCatalogs = movieCatalogs;
+    }
+
+    // ...
+}
+```
+
+
+默认情况下，每当自动连接失败零种候选人豆可用; 默认行为是治疗方法，构造器，字段假设为需要依赖。如下面所示可以改变这种现象。
+```java?linenums
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Autowired(required = false)
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    // ...
+}
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
