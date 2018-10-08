@@ -2989,6 +2989,78 @@ public class CachingMovieLister {
 关于组合不同的生命周期机制的效果的详细信息，请参阅 结合生命周期机制。
 ```
 ### 1.10. 类路径扫描和托管组件
+
+
+在本章中使用XML最实例来指定产生每个配置元数据BeanDefinitionSpring容器内。在上一节（基于注解的容器配置）演示了如何通过代码级注解提供大量的结构的元数据。即使是在那些例子，然而，“基地” bean定义明确的XML文件中定义，而只注释驱动的依赖注入。本节描述了一个选项，隐含地检测 候选组件通过扫描类路径。候选组件是匹配针对过滤标准，并且具有与所述容器中注册的对应bean定义的类。这样就省去了使用XML来进行注册豆; 相反，您可以使用标注（例如@Component），AspectJ的类型的表达式，或您自己的自定义过滤器标准来选择哪些类将用容器注册的bean定义。
+```
+
+
+与Spring 3.0开始，由Spring JavaConfig项目提供了很多功能都是核心Spring框架的一部分。这允许您定义使用Java，而不是使用传统的XML文件豆类。看看的@Configuration，@Bean， @Import，和@DependsOn注释有关如何使用这些新功能的例子。
+
+```
+#### 1.10.1. @Component和进一步典型化注解
+
+
+的@Repository注释是用于满足所述角色或任何类的标记 构造型的存储库（也被称为数据访问对象或DAO）的。中该标志物的用途是如在描述的异常进行自动翻译 异常翻译。
+
+Spring提供进一步典型化注解：@Component，@Service，和 @Controller。@Component为任何Spring管理组件的通用刻板印象。 @Repository，@Service和@Controller是的特例@Component分别更具体的使用情况，例如，在持久性，服务，和表示层。因此，你可以用你的注解组件类 @Component，但如果用注解它们@Repository，@Service或者@Controller ，你的类能更好地被工具处理，或与切面进行关联。例如，这些典型化注解可以成为理想的切入点目标。这也有可能是@Repository，@Service和@Controller可携带Spring Framework的未来版本中为更多的语义。因此，如果你正在使用之间进行选择@Component或@Service为您服务层，@Service显然是更好的选择。同样，如上所述，@Repository已经支持为持久层的自动异常转换的标志。
+
+#### 1.10.2. 元注释
+
+
+许多Spring提供的注释可作为元注释在自己的代码。甲元注释仅仅是可应用于另一注释的注释。例如，@Service上面提到的注释是间注解为 @Component：
+```java?linenums
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Component // Spring will see this and treat @Service in the same way as @Component
+public @interface Service {
+
+    // ....
+}
+```
+
+
+元注释也可以结合起来，创造组成的注释。例如，@RestController从Spring MVC的注解组成的@Controller和 @ResponseBody。
+
+另外，由注释可以任选地从元注释重新声明属性，以允许用户定制。当你想只露出元注释的属性的子集，这可以是特别有用。例如，Spring的 @SessionScope注解的硬编码范围的名字session，但仍允许的定制proxyMode。
+```java?linenums
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Scope(WebApplicationContext.SCOPE_SESSION)
+public @interface SessionScope {
+
+    /**
+     * Alias for {@link Scope#proxyMode}.
+     * <p>Defaults to {@link ScopedProxyMode#TARGET_CLASS}.
+     */
+    @AliasFor(annotation = Scope.class)
+    ScopedProxyMode proxyMode() default ScopedProxyMode.TARGET_CLASS;
+
+}
+```
+
+
+@SessionScope然后可以在不声明被使用proxyMode如下：
+```java?linenums
+@Service
+@SessionScope
+public class SessionScopedService {
+    // ...
+}
+```
+
+
+或为一个覆盖值proxyMode，如下所示：
+```java?linenums
+@Service
+@SessionScope(proxyMode = ScopedProxyMode.INTERFACES)
+public class SessionScopedUserService implements UserService {
+    // ...
+}
+```
+
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
 ### 1.13. 环境抽象
