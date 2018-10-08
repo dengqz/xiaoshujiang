@@ -2450,6 +2450,60 @@ public class SimpleMovieLister {
     // ...
 }
 ```
+```
+
+
+只有一个每类注释构造函数可以作为标记要求，但多个非必需的构造函数可以被注解。在这种情况下，每次的候选人中考虑和Spring使用贪婪的构造，其依赖关系可以得到满足，那就是有参数的数目最多的构造。
+
+将所需的属性@Autowired，建议在@Required注解。将所需的属性表示该属性不需要自动装配的目的，如果它不能自动装配的属性被忽略。@Required，在另一方面，是因为它会强制通过由容器所支持的任何装置设定的属性更强。如果没有值被注入，相应的异常。
+
+```
+
+另外，您也可以表达通过Java 8的一个特别依赖的非必需性质java.util.Optional：
+```java?linenums
+public class SimpleMovieLister {
+
+    @Autowired
+    public void setMovieFinder(Optional<MovieFinder> movieFinder) {
+        ...
+    }
+}
+```
+
+
+由于Spring框架5.0的，你也可以使用一个@Nullable注释（任何种类的任何包装，例如javax.annotation.Nullable从JSR-305）：
+```java?linenums
+public class SimpleMovieLister {
+
+    @Autowired
+    public void setMovieFinder(@Nullable MovieFinder movieFinder) {
+        ...
+    }
+}
+```
+
+
+您还可以使用@Autowired对于那些众所周知的解析依赖接口：BeanFactory，ApplicationContext，Environment，ResourceLoader， ApplicationEventPublisher，和MessageSource。这些接口和扩展接口，如ConfigurableApplicationContext或ResourcePatternResolver，被自动解决，而且不需要特殊的设置。
+```java?linenums
+public class MovieRecommender {
+
+    @Autowired
+    private ApplicationContext context;
+
+    public MovieRecommender() {
+    }
+
+    // ...
+}
+```
+```
+
+
+@Autowired，@Inject，@Resource，和@Value注释由Spring处理 BeanPostProcessor实现这反过来又意味着你不能在您自己的应用这些注释BeanPostProcessor或BeanFactoryPostProcessor类型（如果有的话）。这些类型必须为“连接好”明确通过XML或使用Spring的@Bean方法。
+
+
+```
+
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
