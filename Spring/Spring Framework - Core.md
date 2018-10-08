@@ -3349,6 +3349,25 @@ public class AppConfig {
 
 ```
 
+
+当使用某些非单范围，可能有必要以产生用于所述范围内的对象的代理。推理中描述作用域bean与依赖。为了这个目的，一个范围的代理属性是可用的组件的扫描元件上。三个可能的值是：无，接口和targetClass。例如，下面的配置会导致标准JDK动态代理：
+```java?linenums
+@Configuration
+@ComponentScan(basePackages = "org.example", scopedProxy = ScopedProxyMode.INTERFACES)
+public class AppConfig {
+    ...
+}
+```
+```xml
+
+
+<beans>
+    <context:component-scan base-package="org.example" scoped-proxy="interfaces"/>
+</beans>
+
+
+```
+
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
 ### 1.13. 环境抽象
