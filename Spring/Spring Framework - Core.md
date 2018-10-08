@@ -3450,6 +3450,145 @@ dependencies {
 
 
 ```
+#### 1.11.1. 依赖注入与@Inject和@Named
+
+
+相反的@Autowired，@javax.inject.Inject也可以使用如下：
+```java?linenums
+import javax.inject.Inject;
+
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Inject
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    public void listMovies() {
+        this.movieFinder.findMovies(...);
+        ...
+    }
+}
+```
+
+
+如@Autowired，可以使用@Inject在现场级，方法水平和构造参数的水平。此外，你可以宣布你的注入点的 Provider，允许按需访问，以更短的范围，或者通过一个懒惰访问其他豆豆Provider.get()调用。如上面的例子的变体：
+```java?linenums
+import javax.inject.Inject;
+import javax.inject.Provider;
+
+public class SimpleMovieLister {
+
+    private Provider<MovieFinder> movieFinder;
+
+    @Inject
+    public void setMovieFinder(Provider<MovieFinder> movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    public void listMovies() {
+        this.movieFinder.get().findMovies(...);
+        ...
+    }
+}
+```
+
+
+如果你想使用一个合格的名称应注入的依赖，你应该使用@Named如下注解：
+```java?linenums
+import javax.inject.Inject;
+import javax.inject.Named;
+
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Inject
+    public void setMovieFinder(@Named("main") MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    // ...
+}
+```
+
+
+像@Autowired，@Inject也可与使用java.util.Optional或 @Nullable。这是更适用在这里，因为@Inject没有一个required属性。
+```java?linenums
+public class SimpleMovieLister {
+
+    @Inject
+    public void setMovieFinder(Optional<MovieFinder> movieFinder) {
+        ...
+    }
+}
+```
+```java?linenums
+public class SimpleMovieLister {
+
+    @Inject
+    public void setMovieFinder(@Nullable MovieFinder movieFinder) {
+        ...
+    }
+}
+```
+#### 1.11.2. @Named和@ManagedBean：标准等同于@Component注解
+
+
+相反的@Component，@javax.inject.Named或javax.annotation.ManagedBean可以被使用如下：
+```java?linenums
+import javax.inject.Inject;
+import javax.inject.Named;
+
+@Named("movieListener")  // @ManagedBean("movieListener") could be used as well
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Inject
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    // ...
+}
+```
+
+
+这是很常见的使用@Component而无需为组件指定名称。 @Named可以以类似的方式使用：
+```java?linenums
+import javax.inject.Inject;
+import javax.inject.Named;
+
+@Named
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Inject
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    // ...
+}
+```
+
+
+当使用@Named或@ManagedBean，可以使用组件扫描以完全相同的方式使用Spring注释时，为：
+```java?linenums
+@Configuration
+@ComponentScan(basePackages = "org.example")
+public class AppConfig  {
+    ...
+}
+```
+```
+
+在对比@Component中，JSR-330 @Named和JSR-250 ManagedBean 注解不是组合的。请使用Spring的原型模型构建自定义组件的注解。
+```
 
 ### 1.12. 基于Java的容器配置
 ### 1.13. 环境抽象
