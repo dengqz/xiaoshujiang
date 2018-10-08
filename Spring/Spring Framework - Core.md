@@ -3060,6 +3060,7 @@ public class SessionScopedUserService implements UserService {
     // ...
 }
 ```
+有关详细信息，请参阅 春批注编程模型 的wiki页面。
 
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
