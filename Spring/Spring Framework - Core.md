@@ -2681,6 +2681,209 @@ public class MovieRecommender {
     // ...
 }
 ```
+
+
+接下来，提供对候选bean定义的信息。您可以添加 <qualifier/>标签作为的子元素<bean/>标签，然后指定type并 value匹配您的自定义限定器注解。该类型对注释的完全限定类名相匹配。或者，仿佛存在不便利的名称冲突的风险，可以使用短类名。这两种方法表明在下面的例子。
+```xml
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+    <bean class="example.SimpleMovieCatalog">
+        <qualifier type="Genre" value="Action"/>
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean class="example.SimpleMovieCatalog">
+        <qualifier type="example.Genre" value="Comedy"/>
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean id="movieRecommender" class="example.MovieRecommender"/>
+
+</beans>
+
+
+```
+
+
+在类路径扫描和管理的组成部分，你将看到一个基于注释的替代品在XML提供限定符元数据。具体来说，请参阅提供与注释限定符元数据。
+
+在某些情况下，它可能是足够使用的标注没有值。当注释提供一个更通用的目的，并且可以在几个不同类型的依赖关系可以应用，这可能是有用的。例如，您可以提供离线 的时候没有互联网连接可用，将搜索目录。首先定义简单的注解：
+```java?linenums
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Qualifier
+public @interface Offline {
+
+}
+```
+然后注释添加到字段或作为自动连接：
+```java?linenums
+public class MovieRecommender {
+
+    @Autowired
+    @Offline
+    private MovieCatalog offlineCatalog;
+
+    // ...
+}
+```
+
+
+现在，这个bean定义只需要一个限定type：
+
+```xml
+
+
+<bean class="example.SimpleMovieCatalog">
+    <qualifier type="Offline"/>
+    <!-- inject any dependencies required by this bean -->
+</bean>
+
+
+```
+
+您也可以定义接受一个名为除了属性或代替简单的自定义限定器注解 value属性。如果在字段或参数，然后指定多个属性值作为自动连接，一个bean定义必须匹配 所有这些属性的值被认为是一个自动装配候选。作为一个例子，考虑下面的注释定义：
+```java?linenums
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Qualifier
+public @interface MovieQualifier {
+
+    String genre();
+
+    Format format();
+}
+```
+
+
+在这种情况下Format是一个枚举：
+```java?linenums
+public enum Format {
+    VHS, DVD, BLURAY
+}
+```
+
+
+作为自动连接这些字段将与自定义的限定，包括了每个属性值：genre和format。
+```java?linenums
+public class MovieRecommender {
+
+    @Autowired
+    @MovieQualifier(format=Format.VHS, genre="Action")
+    private MovieCatalog actionVhsCatalog;
+
+    @Autowired
+    @MovieQualifier(format=Format.VHS, genre="Comedy")
+    private MovieCatalog comedyVhsCatalog;
+
+    @Autowired
+    @MovieQualifier(format=Format.DVD, genre="Action")
+    private MovieCatalog actionDvdCatalog;
+
+    @Autowired
+    @MovieQualifier(format=Format.BLURAY, genre="Comedy")
+    private MovieCatalog comedyBluRayCatalog;
+
+    // ...
+}
+```
+
+
+最终，这个bean定义应该与限定器匹配的值。此实施例还证明豆元属性可被用来代替 <qualifier/>子元素。如果有，<qualifier/>和它的属性优先，但自动连接机制将依赖内所提供的价值 <meta/>标签，如果没有这样的限定词存在，如在下面的示例中的最后两个bean定义。
+```xml
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+    <bean class="example.SimpleMovieCatalog">
+        <qualifier type="MovieQualifier">
+            <attribute key="format" value="VHS"/>
+            <attribute key="genre" value="Action"/>
+        </qualifier>
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean class="example.SimpleMovieCatalog">
+        <qualifier type="MovieQualifier">
+            <attribute key="format" value="VHS"/>
+            <attribute key="genre" value="Comedy"/>
+        </qualifier>
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean class="example.SimpleMovieCatalog">
+        <meta key="format" value="DVD"/>
+        <meta key="genre" value="Action"/>
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean class="example.SimpleMovieCatalog">
+        <meta key="format" value="BLURAY"/>
+        <meta key="genre" value="Comedy"/>
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+</beans>
+```
+#### 1.9.5. 使用仿制药自动装配预选赛
+除了@Qualifier注释，还可以使用Java泛型类型作为资格的隐形式。例如，假设您有以下配置：
+```java?linenums
+@Configuration
+public class MyConfiguration {
+
+    @Bean
+    public StringStore stringStore() {
+        return new StringStore();
+    }
+
+    @Bean
+    public IntegerStore integerStore() {
+        return new IntegerStore();
+    }
+}
+```
+
+
+假设上述bean实现一个通用接口，即Store<String>和 Store<Integer>，你可以@Autowire在Store界面和通用将作为一个限定：
+
+```java?linenums
+
+
+@Autowired
+private Store<String> s1; // <String> qualifier, injects the stringStore bean
+
+@Autowired
+private Store<Integer> s2; // <Integer> qualifier, injects the integerStore bean
+
+
+```
+自动装配清单时，地图和阵列一般预选赛也适用：
+```java?linenums
+// Inject all Store beans as long as they have an <Integer> generic
+// Store<String> beans will not appear in this list
+@Autowired
+private List<Store<Integer>> s;
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
