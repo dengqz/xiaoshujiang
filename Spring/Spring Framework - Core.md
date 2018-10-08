@@ -4359,6 +4359,140 @@ public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata)
 ```
 
 
+请参阅的javadoc更多细节。 @Conditional
+结合Java和XML配置
+
+Spring的@Configuration类支持的目标并不是要成为的Spring XML 100％的完全替代。例如Spring XML命名空间的一些设施仍然配置容器的理想方式。无论实例化容器中使用的“XML为中心”的方式，例如：在XML是方便或必要的情况下，你有一个选择 ClassPathXmlApplicationContext，或者在“Java为中心”的方式使用 AnnotationConfigApplicationContext和@ImportResource根据需要导入XML注释。
+XML为中心的使用@Configuration类
+
+它可以优选地从引导XML Spring容器和包括 @Configuration在ad-hoc方式类。例如，在使用Spring XML大现有的代码库，这将是更容易地创建@Configuration一个为需要的基础上的类和它们包括从现有的XML文件。下面你会发现使用的选项@Configuration在这种“以XML为中心”的局面类。
+声明@Configuration类为纯春季<bean/>元素
+
+请记住，@Configuration类容器最终只是bean定义。在这个例子中，我们创建了一个@Configuration名为类AppConfig，包括其内system-test-config.xml的<bean/>定义。因为 <context:annotation-config/>开机时，容器将识别 @Configuration注释和处理@Bean中声明的方法AppConfig 正确。
+```java?linenums
+@Configuration
+public class AppConfig {
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Bean
+    public AccountRepository accountRepository() {
+        return new JdbcAccountRepository(dataSource);
+    }
+
+    @Bean
+    public TransferService transferService() {
+        return new TransferService(accountRepository());
+    }
+}
+```
+
+
+系统测试-config.xml文件：
+```xml
+
+
+<beans>
+    <!-- enable processing of annotations such as @Autowired and @Configuration -->
+    <context:annotation-config/>
+    <context:property-placeholder location="classpath:/com/acme/jdbc.properties"/>
+
+    <bean class="com.acme.AppConfig"/>
+
+    <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+</beans>
+
+
+```
+jdbc.properties:
+```
+
+
+jdbc.url = JDBC：HSQLDB：HSQL：//本地主机/ XDB
+jdbc.username = SA
+jdbc.password =
+
+```
+```java?linenums
+public static void main(String[] args) {
+    ApplicationContext ctx = new ClassPathXmlApplicationContext("classpath:/com/acme/system-test-config.xml");
+    TransferService transferService = ctx.getBean(TransferService.class);
+    // ...
+}
+```
+
+
+在system-test-config.xml上文中，AppConfig <bean/>不声明一个id 元件。虽然这是可以接受的话，没有必要因为没有其他bean将以往任何时候都提到它，这是不可能的，这将是由名容器明确牵强。同样与DataSource豆-它永远只能按类型自动连接，所以一个bean的id要求不严格。
+使用<上下文：组分扫描/>拿起@Configuration类
+
+因为@Configuration与间注解@Component，@Configuration-annotated类自动对于组件扫描的候选者。使用相同的方案如上述，我们可以重新定义system-test-config.xml，以利用组件扫描的。请注意，在这种情况下，我们并不需要显式声明 <context:annotation-config/>，因为<context:component-scan/>启用相同的功能。
+
+系统测试-config.xml文件：
+```xml
+
+
+<beans>
+    <!-- picks up and registers AppConfig as a bean definition -->
+    <context:component-scan base-package="com.acme"/>
+    <context:property-placeholder location="classpath:/com/acme/jdbc.properties"/>
+
+    <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+</beans>
+
+```
+@Configuration类为中心的XML的使用与@ImportResource
+
+在应用程序@Configuration类是用于配置容器的主要机制，它仍可能需要至少使用一些XML。在这些情况下，简单地使用@ImportResource和需要只定义尽可能多的XML。这样做实现了“以Java为中心”的方法来配置容器，并保持XML到最低限度。
+```java?linenums
+@Configuration
+@ImportResource("classpath:/com/acme/properties-config.xml")
+public class AppConfig {
+
+    @Value("${jdbc.url}")
+    private String url;
+
+    @Value("${jdbc.username}")
+    private String username;
+
+    @Value("${jdbc.password}")
+    private String password;
+
+    @Bean
+    public DataSource dataSource() {
+        return new DriverManagerDataSource(url, username, password);
+    }
+}
+```
+```
+properties-config.xml
+<beans>
+    <context:property-placeholder location="classpath:/com/acme/jdbc.properties"/>
+</beans>
+```
+```
+jdbc.properties
+jdbc.url = JDBC：HSQLDB：HSQL：//本地主机/ XDB
+jdbc.username = SA
+jdbc.password =
+
+```
+
+```java?linenums
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
+    TransferService transferService = ctx.getBean(TransferService.class);
+    // ...
+}
+```
 
 ### 1.13. 环境抽象
 ### 1.13. 注册LoadTimeWeaver
