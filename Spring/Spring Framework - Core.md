@@ -2564,6 +2564,74 @@ public class MovieRecommender {
 
 
 ```
+#### 1.9.4. 与预选赛微调基于注解的自动连接
+
+
+@Primary是通过用型几个实例以使用自动装配时，能够确定的一个一次候选的有效途径。当需要在选择过程中更多的控制权，Spring的@Qualifier可以用来注解。您可以使用特定的参数限定词值相关联，缩小集类型匹配的，这样一个特定的bean被选择为每一个参数。在最简单的情况下，这可以是一个简单的描述性值：
+```java?linenums
+public class MovieRecommender {
+
+    @Autowired
+    @Qualifier("main")
+    private MovieCatalog movieCatalog;
+
+    // ...
+}
+```
+
+
+的@Qualifier注释也可以在单独的构造器参数或方法参数指定：
+```java?linenums
+public class MovieRecommender {
+
+    private MovieCatalog movieCatalog;
+
+    private CustomerPreferenceDao customerPreferenceDao;
+
+    @Autowired
+    public void prepare(@Qualifier("main")MovieCatalog movieCatalog,
+            CustomerPreferenceDao customerPreferenceDao) {
+        this.movieCatalog = movieCatalog;
+        this.customerPreferenceDao = customerPreferenceDao;
+    }
+
+    // ...
+}
+```
+相应的bean定义如下所示。与限定值的bean的“主”是有线与有资格使用相同的值构造函数的参数。
+```xml
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+    <bean class="example.SimpleMovieCatalog">
+        <qualifier value="main"/>
+
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean class="example.SimpleMovieCatalog">
+        <qualifier value="action"/>
+
+        <!-- inject any dependencies required by this bean -->
+    </bean>
+
+    <bean id="movieRecommender" class="example.MovieRecommender"/>
+
+</beans>
+
+
+```
+
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
