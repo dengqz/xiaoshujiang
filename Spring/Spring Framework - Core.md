@@ -1601,7 +1601,7 @@ beanFactory.registerScope("thread", threadScope);
 
 
 ### 1.6. 自定义bean的本质
-#### 1.6.1 生命周期回调
+#### 1.6.1. 生命周期回调
 
 
 为了与bean的生命周期的容器的管理相结合，可以实现在春季InitializingBean和DisposableBean接口。容器调用 afterPropertiesSet()了前者destroy()为后者允许bean在bean的初始化和销毁某些行动。
