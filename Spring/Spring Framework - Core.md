@@ -2967,7 +2967,31 @@ public class MovieRecommender {
     // ...
 }
 ```
+#### 1.9.8. @PostConstruct和@PreDestroy
 
+
+将CommonAnnotationBeanPostProcessor不仅承认了@Resource注解也是JSR-250 的生命周期注解。在Spring 2.5中引入的，对于这些注释的支持提供了另一种替代那些描述 初始化回调和 销毁回调。提供的 CommonAnnotationBeanPostProcessor是在Spring内注册 ApplicationContext，携带这些注释中的一个的方法，在生命周期的作为相应的弹簧生命周期接口的方法在相同的点调用或显式声明回调方法。在下面的示例中，高速缓存将被预先填充在初始化时与销毁。
+```java?linenums
+public class CachingMovieLister {
+
+    @PostConstruct
+    public void populateMovieCache() {
+        // populates the movie cache upon initialization...
+    }
+
+    @PreDestroy
+    public void clearMovieCache() {
+        // clears the movie cache upon destruction...
+    }
+}
+```
+```
+
+
+关于组合不同的生命周期机制的效果的详细信息，请参阅 结合生命周期机制。
+
+
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
