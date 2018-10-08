@@ -2235,6 +2235,52 @@ foo.fred.bob.sammy = 123
 当你需要问一个容器实际FactoryBean实例本身，而不是它创建的bean，前言bean的ID和连字符（&调用时）getBean()的方法ApplicationContext。因此，对于一个给定的FactoryBean 用的ID myBean，调用getBean("myBean")在容器上返回的产品FactoryBean; 然而，调用getBean("&myBean")返回的 FactoryBean实例本身。
 
 ### 1.9. 基于注释的容器配置
+```
+
+注释是比XML的配置Spring更好？
+
+引入基于注解的配置提出的这种做法是否比XML“更好”的问题。简短的答案是它依赖。长的答复是，每种方法都有其优点和缺点，通常它是由开发者决定哪种策略适合他们更好。由于他们的方式定义，注释在他们的声明中提供了很多方面，导致更短，更简洁的配置。然而，XML擅长连接最多部件而不触及他们的源代码或重新编译他们。有些人希望具有靠近源布线而其他人则认为注释类不再POJO和，此外，该结构变得分散，难以控制。
+
+无论选择，Spring可以容纳两种风格，甚至将它们混合在一起。值得指出的是，通过其JavaConfig选项，Spring允许注释以非侵入性的方式使用，而不触及目标组件的源代码，并在模具方面，所有的配置风格被支持的 春天工具套件。
+```
+
+
+到XML设置的替代是通过基于注释的配置依赖于字节码元数据布线组件组成，而不是尖括号声明提供。代替使用XML来描述一个bean布线的，显影剂通过使用在相关类，方法或域声明注解移动配置到部件类本身。正如所提到RequiredAnnotationBeanPostProcessor示例，使用BeanPostProcessor结合注解是扩展Spring IoC容器的常用手段。例如，Spring 2.0引入执行与所要求的性能的可能性@Required注释。Spring 2.5的使人们有可能跟随驱动Spring的依赖注入相同的一般方法。从本质上讲，@Autowired注释提供了如所描述的相同的功能，自动装配协作者但具有更精细的控制和更广泛的适用性。弹簧2.5还增加了对JSR-250注解如 @PostConstruct，和@PreDestroy。弹簧3.0添加JSR-330（Java依赖注入）包含在所述包javax.inject注释如支持@Inject 和@Named。关于那些标注详细信息可在中找到 相关的部分。
+```
+注释注射执行之前 XML喷射，从而后者配置将覆盖前者用于通过这两种方法的有线特性。
+
+```
+
+
+与往常一样，你可以作为一个独立的bean定义他们注册，但是他们也可以通过包括一个基于XML的配置方式，下面的标记（注意列入被隐性登记的context命名空间）：
+```xml
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:annotation-config/>
+
+</beans>
+
+
+```
+
+
+（该隐式注册的后处理器包括 AutowiredAnnotationBeanPostProcessor， CommonAnnotationBeanPostProcessor， PersistenceAnnotationBeanPostProcessor，以及前述 RequiredAnnotationBeanPostProcessor）。
+```
+
+
+<context:annotation-config/>只查找在同一个应用程序上下文豆定义它的注解。这意味着，如果你把 <context:annotation-config/>一个WebApplicationContext一个DispatcherServlet，它只是检查@Autowired在控制器豆类，而不是你的服务。见 DispatcherServlet的更多信息。
+
+```
+
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
