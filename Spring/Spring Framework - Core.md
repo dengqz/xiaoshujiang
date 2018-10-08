@@ -3430,7 +3430,6 @@ dependencies {
 ```
 ```xml
 
-
 当该指数自动启用META-INF/spring.components在类路径中。如果索引部分可用一些库（或用例），但整个应用程序无法建立，你可以回退到普通类路径列（如没有索引存在的话）通过设置spring.index.ignore到 true，无论是作为一个系统属性或以spring.properties在类路径的根文件。
 
 ```
