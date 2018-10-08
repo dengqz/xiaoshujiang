@@ -1833,6 +1833,7 @@ public final class Boot {
     }
 }
 ```
+#### 1.6.2. ApplicationContextAware和BeanNameAware
 
 ### 1.7. Bean定义继承
 ### 1.8. 集装箱扩建点
