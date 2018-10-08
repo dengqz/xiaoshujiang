@@ -3270,6 +3270,58 @@ Java语言的知名度@Bean方法没有在Spring的容器上所产生的bean定�
 最后，请注意，一个类可以拥有多个@Bean针对同一个bean的方法，为多个工厂方法的安排取决于在运行时可依赖使用。这是相同的算法作为选择在其它配置方案的“贪婪”构造或工厂方法：用可满足的依赖性将在施工时间被拾取，类似于容器多个之间如何选择最大数量的变体@Autowired的构造。
 
 ```
+#### 1.10.6. 命名自动检测组件
+
+
+当组件被自动检测作为扫描过程的一部分，由所产生的bean名称BeanNameGenerator已知的是扫描仪的策略。默认情况下，任何Spring刻板印象注释（@Component，@Repository，@Service，和 @Controller包含）的名字 value将因此提供的名字相应的bean定义。
+
+如果这样的注释不包含名称 value或用于任何其他检测到的成分（如那些由自定义过滤器发现），默认bean名称发生器返回小写形式非限定类名。例如，如果检测到以下的组件类，名称将是myMovieLister与movieFinderImpl：
+```java?linenums
+@Service("myMovieLister")
+public class SimpleMovieLister {
+    // ...
+}
+```
+```java?linenums
+@Repository
+public class MovieFinderImpl implements MovieFinder {
+    // ...
+}
+```
+
+
+如果你不想依赖默认bean命名策略，可以提供一个自定义的bean命名策略。首先，实现 BeanNameGenerator 接口，并确保包括默认的无参数的构造函数。然后在配置扫描器时提供全限定类名：
+```java?linenums
+@Configuration
+@ComponentScan(basePackages = "org.example", nameGenerator = MyNameGenerator.class)
+public class AppConfig {
+    ...
+}
+```
+```xml
+
+
+<beans>
+    <context:component-scan base-package="org.example"
+        name-generator="org.example.MyNameGenerator" />
+</beans>
+
+
+```
+
+
+作为一般规则，考虑每当其他部件可以给它做明确提到注解指定名称。在另一方面，自动生成的名称就足够每当容器负责接线。
+#### 1.10.7. 提供自动检测的组件提供一个作用域
+
+
+与一般的Spring管理组件，自动检测组件的默认和最常用的范围singleton。不过，有时你需要，可以通过指定一个不同的范围@Scope注释。只需提供注释中范围的名称：
+```java?linenums
+@Scope("prototype")
+@Repository
+public class MovieFinderImpl implements MovieFinder {
+    // ...
+}
+```
 
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
