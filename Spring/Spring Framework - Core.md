@@ -2280,7 +2280,21 @@ foo.fred.bob.sammy = 123
 <context:annotation-config/>只查找在同一个应用程序上下文豆定义它的注解。这意味着，如果你把 <context:annotation-config/>一个WebApplicationContext一个DispatcherServlet，它只是检查@Autowired在控制器豆类，而不是你的服务。见 DispatcherServlet的更多信息。
 
 ```
+#### 1.9.1. @Required
+该@Required注释适用于bean属性setter方法，如下面的例子：
+```java?linenums
+public class SimpleMovieLister {
 
+    private MovieFinder movieFinder;
+
+    @Required
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+
+    // ...
+}
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
