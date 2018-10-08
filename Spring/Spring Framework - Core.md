@@ -3323,6 +3323,32 @@ public class MovieFinderImpl implements MovieFinder {
 }
 ```
 
+```
+@Scope注释仅内省在混凝土豆类（注释组件）或工厂方法（@Bean方法）。与此相反，以XML bean定义，没有概念bean定义继承和继承层次在类级别无关元数据的目的。
+```
+
+
+有关特定网络范围的细节，如在Spring上下文“请求” /“会话”，见请求，会话，应用和WebSocket的范围。就像那些范围预建的注解，你也可以使用Spring的元注释的方法创作自己的作用域注释：如自定义注解元标注有@Scope("prototype")，也可能宣布自定义范围的代理模式。
+```
+为了提供范围的分辨率，而不是依赖于基于注解的方法定制策略，实现 接口，并且一定要包括一个默认的无参数的构造函数。然后在配置扫描器时提供全限定类名：ScopeMetadataResolver
+```
+```java?linenums
+@Configuration
+@ComponentScan(basePackages = "org.example", scopeResolver = MyScopeResolver.class)
+public class AppConfig {
+    ...
+}
+```
+```xml
+
+
+<beans>
+    <context:component-scan base-package="org.example" scope-resolver="org.example.MyScopeResolver"/>
+</beans>
+
+
+```
+
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
 ### 1.13. 环境抽象
