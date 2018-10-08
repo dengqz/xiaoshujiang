@@ -1835,6 +1835,36 @@ public final class Boot {
 ```
 #### 1.6.2. ApplicationContextAware和BeanNameAware
 
+
+当ApplicationContext创建了实现所述对象实例 org.springframework.context.ApplicationContextAware接口，该实例被提供有该基准ApplicationContext。
+```java
+
+
+public interface ApplicationContextAware {
+
+    void setApplicationContext(ApplicationContext applicationContext) throws BeansException;
+}
+
+```
+
+
+因此豆可以在编程方式操作ApplicationContext创建它们，通过ApplicationContext接口，或通过铸造参照该接口的已知子类，如ConfigurableApplicationContext，它公开的附加功能。其中一个用途是其他豆类的纲领性检索。有时候，这种能力是非常有用的; 然而，一般来说，你应该避免，因为它情侣代码春不遵循控制的风格，合作者提供给豆类特性反演。在其他的方法 ApplicationContext提供访问文件资源，发布应用程序事件，和访问MessageSource。这些附加特征中描述 的ApplicationContext中其他功能
+
+在Spring 2.5中，自动装配是另一种选择，以获得与参考 ApplicationContext。“传统的” constructor和byType自动装配模式（在描述的自动装配合作者）可以提供类型的依赖 ApplicationContext于构造器参数或设置器方法参数，分别。欲了解更多灵活性，包括自动装配属性和多参数方法的能力，使用新的基于注解的自动连接功能。如果这样做，将ApplicationContext被自动连接到所期待的字段，构造函数的参数，或者方法参数ApplicationContext类型，如果该域，构造或问题的方法进行了@Autowired注释。欲了解更多信息，请参见 @Autowired。
+
+当ApplicationContext创建了实现的一类 org.springframework.beans.factory.BeanNameAware接口，类设置有在其相关联的对象定义所定义的名称的引用。
+```java
+public interface BeanNameAware {
+
+    void setBeanName(String name) throws BeansException;
+}
+```
+
+
+回调正常bean属性的人口之后但在初始化回调如之前调用InitializingBean 的afterPropertiesSet或自定义的初始化方法。
+#### 1.6.4. 其他感知接口
+
+
 ### 1.7. Bean定义继承
 ### 1.8. 集装箱扩建点
 ### 1.9. 基于注释的容器配置
