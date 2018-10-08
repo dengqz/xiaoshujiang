@@ -2302,7 +2302,20 @@ public class SimpleMovieLister {
 ```
 JSR 330的@Inject注释来代替Spring的的使用@Autowired注释在下面的例子。请参阅这里了解更多详情。
 ```
+您可以将@Autowired注释构造函数：
+```java?linenums
+public class MovieRecommender {
 
+    private final CustomerPreferenceDao customerPreferenceDao;
+
+    @Autowired
+    public MovieRecommender(CustomerPreferenceDao customerPreferenceDao) {
+        this.customerPreferenceDao = customerPreferenceDao;
+    }
+
+    // ...
+}
+```
 
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
