@@ -3367,6 +3367,17 @@ public class AppConfig {
 
 
 ```
+#### 1.10.8. 提供与注释限定符元数据
+
+
+在@Qualifier注释中讨论微调基于注解的自动连接与预选赛。在这一节中的示例演示了如何使用的@Qualifier注释和自定义限定器注解提供细粒度的控制，当你解决自动装配的候选者。因为这些实施例是基于XML bean定义，限定符元数据用的是设置在候选bean定义qualifier或meta 所述的子元素bean中的XML元素。当classpath扫描来自动检测组件，你提供的候选类型级别的注解限定符元数据。下面的三个例子演示了这种技术：
+```java?linenums
+@Component
+@Qualifier("Action")
+public class ActionMovieCatalog implements MovieCatalog {
+    // ...
+}
+```
 
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
