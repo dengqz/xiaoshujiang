@@ -2884,6 +2884,65 @@ private Store<Integer> s2; // <Integer> qualifier, injects the integerStore bean
 @Autowired
 private List<Store<Integer>> s;
 ```
+#### 1.9.6. CustomAutowireConfigurer上
+
+
+的 CustomAutowireConfigurer 是BeanFactoryPostProcessor，使您能够注册即使他们不与Spring的注解自己的自定义限定注释类型@Qualifier的注释。
+```xml
+
+
+<bean id="customAutowireConfigurer"
+        class="org.springframework.beans.factory.annotation.CustomAutowireConfigurer">
+    <property name="customQualifierTypes">
+        <set>
+            <value>example.CustomQualifier</value>
+        </set>
+    </property>
+</bean>
+
+```
+
+
+在AutowireCandidateResolver由确定自动装配候选：
+
+ - 的autowire-candidate每个bean定义的值
+
+- 任何default-autowire-candidates图案（多个）上的可用<beans/>元件
+
+- 存在@Qualifier注释和任何自定义注解与注册CustomAutowireConfigurer
+
+当多个豆有资格作为候选自动装配中，“主要”的判定为执行以下操作：如果所述候选者中恰好一个bean定义具有primary 设置为属性true，它将被选中。
+#### 1.9.7. @Resource
+
+
+Spring还支持注射使用JSR-250 @Resource的字段或bean属性setter方法的注释。这是在JSF 1.2管理豆或JAX-WS 2.0端点的Java EE 5和6的共同图案，例如。Spring支持这种模式的Spring管理对象也是如此。
+
+@Resource需要一个name属性，缺省时，Spring解释该值作为bean的名字将被注入。换句话说，它遵循按名称的语义，如在本实施例证实：
+```java?linenums
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Resource(name="myMovieFinder")
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+}
+```
+
+
+如果没有明确指定名称，默认名称是从字段名或者setter方法的。在现场的情况下，它需要的字段名; 在setter方法的情况下，它需要的bean属性的名称。所以，下面的例子将不得不注射到它的setter方法名“的MovieFinder”豆：
+```java?linenums
+public class SimpleMovieLister {
+
+    private MovieFinder movieFinder;
+
+    @Resource
+    public void setMovieFinder(MovieFinder movieFinder) {
+        this.movieFinder = movieFinder;
+    }
+}
+```
 ### 1.10. 类路径扫描和托管组件
 ### 1.11. 使用JSR 330标准注释
 ### 1.12. 基于Java的容器配置
