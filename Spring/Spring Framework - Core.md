@@ -1865,6 +1865,22 @@ public interface BeanNameAware {
 #### 1.6.4. 其他感知接口
 
 
+除了ApplicationContextAware和BeanNameAware上面所讨论的，Spring提供了一系列的Aware，允许豆指示，他们需要一定的容器接口基础设施的依赖。最重要的Aware接口总结如下-作为一般规则，该名称是依赖型的一个很好的迹象：
+|Name|依赖注入|解释..|
+|-|-|-|
+|ApplicationContextAware|声明 ApplicationContext|ApplicationContextAware和BeanNameAware|
+|ApplicationEventPublisherAware|封闭的事件发布 ApplicationContext| ApplicationContext中的其他功能|
+|BeanClassLoaderAware|类加载器用于加载bean类。|实例化bean|
+|BeanFactoryAware|声明 BeanFactory|ApplicationContextAware和BeanNameAware|
+|BeanNameAware|申报bean的名称|ApplicationContextAware和BeanNameAware|
+|BootstrapContextAware|资源适配器BootstrapContext的容器中，仅在JCA知道运行。通常可用ApplicationContext小号|CCI制定|
+|LoadTimeWeaverAware|定义韦弗在加载时处理类定义|加载时在Spring应用中使用AspectJ织|
+|MessageSourceAware|解决消息（与参数化和国际化的支持）配置的策略|ApplicationContext中的其他功能|
+|NotificationPublisherAware|春天JMX通知出版商|通知|
+|ResourceLoaderAware|对于低级别的访问到资源配置装载机|资源|
+|ServletConfigAware|当前ServletConfig容器中仅在基于web的Spring运行。有效 ApplicationContext|Spring MVC|
+|ServletContextAware|当前ServletContext容器中仅在基于web的Spring运行。有效 ApplicationContext|Spring MVC|
+
 ### 1.7. Bean定义继承
 ### 1.8. 集装箱扩建点
 ### 1.9. 基于注释的容器配置
