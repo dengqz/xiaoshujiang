@@ -4495,7 +4495,88 @@ public static void main(String[] args) {
 ```
 
 ### 1.13. 环境抽象
-### 1.13. 注册LoadTimeWeaver
+这Environment 是一个集成在容器中的抽象，它模拟了应用程序环境的两个关键方面：配置文件 和属性。
+
+一个轮廓是bean定义一个命名的逻辑组，只有当指定的配置文件是活动的容器进行登记。可以将Bean分配给配置文件，无论是以XML还是通过注释定义。Environment与配置文件相关的对象的作用是确定哪些配置文件（如果有）当前处于活动状态，以及默认情况下哪些配置文件（如果有）应处于活动状态。
+
+属性在几乎所有应用程序中都发挥着重要作用，并且可能源自各种源：属性文件，JVM系统属性，系统环境变量，JNDI，servlet上下文参数，ad-hoc属性对象，映射等。Environment与属性相关的对象的作用是为用户提供方便的服务接口，用于配置属性源和从中解析属性。
+#### 1.13.1. Bean定义配置文件
+Bean定义配置文件是核心容器中的一种机制，允许在不同环境中注册不同的bean。单词环境 对不同的用户来说意味着不同的东西，这个功能可以帮助许多用例，包括：
+
+- 在开发中使用内存数据源，在QA或生产环境中查找来自JNDI的相同数据源
+
+- 仅在将应用程序部署到性能环境时注册监视基础结构
+
+- 为客户A和客户B部署注册bean的自定义实现
+
+让我们考虑实际应用中的第一个用例，它需要一个 DataSource。在测试环境中，配置可能如下所示：
+```java?linenums
+@Bean
+public DataSource dataSource() {
+    return new EmbeddedDatabaseBuilder()
+        .setType(EmbeddedDatabaseType.HSQL)
+        .addScript("my-schema.sql")
+        .addScript("my-test-data.sql")
+        .build();
+}
+```
+现在让我们考虑如何将此应用程序部署到QA或生产环境中，假设应用程序的数据源将在生产应用程序服务器的JNDI目录中注册。我们的dataSourcebean现在看起来像这样：
+```java?linenums
+@Bean(destroyMethod="")
+public DataSource dataSource() throws Exception {
+    Context ctx = new InitialContext();
+    return (DataSource) ctx.lookup("java:comp/env/jdbc/datasource");
+}
+```
+问题是如何根据当前环境在使用这两种变体之间切换。随着时间的推移，Spring用户已经设计了许多方法来完成这项工作，通常依赖于系统环境变量和<import/>包含${placeholder}令牌的XML 语句的组合，这些令牌根据环境变量的值解析为正确的配置文件路径。Bean定义配置文件是核心容器功能，可为此问题提供解决方案。
+
+如果我们概括上面特定于环境的bean定义的示例用例，我们最终需要在某些上下文中注册某些bean定义，而不是在其他上下文中。您可以说您希望在情境A中注册某个bean定义的配置文件，在情况B中注册不同的配置文件。让我们首先看看如何更新我们的配置以反映这种需求。
+
+@profile
+该@Profile 注释允许你表明组件有资格登记时的一个或多个指定的简档是活动的。使用上面的示例，我们可以dataSource按如下方式重写配置：
+
+```java?linenums
+@Configuration
+@Profile("development")
+public class StandaloneDataConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        return new EmbeddedDatabaseBuilder()
+            .setType(EmbeddedDatabaseType.HSQL)
+            .addScript("classpath:com/bank/config/sql/schema.sql")
+            .addScript("classpath:com/bank/config/sql/test-data.sql")
+            .build();
+    }
+}
+```
+```java?linenums
+@Configuration
+@Profile("production")
+public class JndiDataConfig {
+
+    @Bean(destroyMethod="")
+    public DataSource dataSource() throws Exception {
+        Context ctx = new InitialContext();
+        return (DataSource) ctx.lookup("java:comp/env/jdbc/datasource");
+    }
+}
+```
+```
+如前所述，使用@Bean方法，您通常会选择使用编程JNDI查找：使用Spring的JndiTemplate/ JndiLocatorDelegatehelper或InitialContext上面显示的直接JNDI 用法，但不会JndiObjectFactoryBean 强制您将返回类型声明为FactoryBean类型。
+```
+@Profile可以用作元注释，以创建自定义组合注释。以下示例定义了一个自定义@Production注释，可用作以下内容的 替代 @Profile("production")：
+```java?linenums
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Profile("production")
+public @interface Production {
+}
+```
+```
+如果@Configuration标记了类，则将绕过与该类关联的@Profile所有@Bean方法和 @Import注释，除非一个或多个指定的配置文件处于活动状态。如果a @Component或@Configurationclass被标记@Profile({"p1", "p2"})，则除非已激活配置文件'p1'和/或'p2'，否则不会注册/处理该类。如果给定的配置文件以NOT运算符（!）作为前缀，则如果配置文件未 处于活动状态，则将注册带注释的元素。例如，@Profile({"p1", "!p2"})如果配置文件“p1”处于活动状态或配置文件“p2”未激活，则会发生注册。
+```
+### 1.14. 注册LoadTimeWeaver
 ### 1.15. ApplicationContext的其他功能
 ### 1.16. BeanFactory
 ## 2. 资源
