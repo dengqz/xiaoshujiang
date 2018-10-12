@@ -6350,7 +6350,24 @@ LocalValidatorFactoryBean对于大多数情况，默认配置应该足够了。�
 从Spring 3开始，可以使用Validator配置DataBinder实例。配置完成后，可以通过调用来调用Validator binder.validate()。任何验证错误都会自动添加到活页夹的BindingResult中。
 
 以编程方式使用DataBinder时，可以在绑定到目标对象后调用验证逻辑：
+```
+Foo target = new Foo();
+DataBinder binder = new DataBinder(target);
+binder.setValidator(new FooValidator());
 
+// bind to the target object
+binder.bind(propertyValues);
+
+// validate the target object
+binder.validate();
+
+// get BindingResult that includes any validation errors
+BindingResult results = binder.getBindingResult();
+```
+DataBinder也可以Validator通过dataBinder.addValidators和配置多个实例 dataBinder.replaceValidators。将全局配置的Bean验证与Validator在DataBinder实例上本地配置的Spring组合时，这非常有用。请参阅[validation-mvc-configurations]。
+
+#### 3.8.4. Spring MVC 3验证
+请参阅Spring MVC章节中的验证。
 ## 4. Spring表达语言（SpEL）
 ### 4.1. 介绍
 ### 4.2. 评估
