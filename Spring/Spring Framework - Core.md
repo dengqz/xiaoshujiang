@@ -8258,24 +8258,1887 @@ public void monitor(Object service) {
 
 </aop:aspect>
 ```
+正如我们在讨论@AspectJ样式时所提到的，使用命名切入点可以显着提高代码的可读性。
+
+method属性标识doAccessCheck提供建议正文的method（）。必须为包含通知的aspect元素引用的bean定义此方法。在执行数据访问操作（由切入点表达式匹配的方法执行连接点）之前，将调用方面bean上的“doAccessCheck”方法。
+
+回复建议后
+在匹配的方法执行正常完成后返回通知运行。它<aop:aspect>以与建议之前相同的方式在内部声明。例如：
+
+```xml
+<aop:aspect id="afterReturningExample" ref="aBean">
+
+    <aop:after-returning
+        pointcut-ref="dataAccessOperation"
+        method="doAccessCheck"/>
+
+    ...
+
+</aop:aspect>
+```
+就像在@AspectJ样式中一样，可以在建议体内获得返回值。使用returns属性指定应将返回值传递到的参数的名称：
+
+```xml
+<aop:aspect id="afterReturningExample" ref="aBean">
+
+    <aop:after-returning
+        pointcut-ref="dataAccessOperation"
+        returning="retVal"
+        method="doAccessCheck"/>
+
+    ...
+
+</aop:aspect>
+
+```
+doAccessCheck方法必须声明一个名为的参数retVal。此参数的类型以与@AfterReturning所述相同的方式约束匹配。例如，方法签名可以声明为：
+```java?linenums
+public void doAccessCheck(Object retVal) {...
+```
+投掷建议后
+抛出建议执行时，通过抛出异常退出匹配的方法执行。它在<aop:aspect>使用投掷后元素内部声明：
+
+```xml
+<aop:aspect id="afterThrowingExample" ref="aBean">
+
+    <aop:after-throwing
+        pointcut-ref="dataAccessOperation"
+        method="doRecoveryActions"/>
+
+    ...
+
+</aop:aspect>
+```
+就像在@AspectJ样式中一样，可以在建议体内获取抛出的异常。使用throwing属性指定应将异常传递到的参数的名称：
+
+```xml
+<aop:aspect id="afterThrowingExample" ref="aBean">
+
+    <aop:after-throwing
+        pointcut-ref="dataAccessOperation"
+        throwing="dataAccessEx"
+        method="doRecoveryActions"/>
+
+    ...
+
+</aop:aspect>
+```
+doRecoveryActions方法必须声明一个名为的参数dataAccessEx。此参数的类型以与@AfterThrowing相同的方式约束匹配。例如，方法签名可以声明为：
+
+```java?linenums
+public void doRecoveryActions(DataAccessException dataAccessEx) {...
+```
+经过（终于）建议
+在（最终）建议运行之后，匹配的方法执行退出。它使用after元素声明：
+
+```xml
+<aop:aspect id="afterFinallyExample" ref="aBean">
+
+    <aop:after
+        pointcut-ref="dataAccessOperation"
+        method="doReleaseLock"/>
+
+    ...
+
+</aop:aspect>
+```
+围绕建议
+最后一种建议是建议。周围的建议围绕匹配的方法执行运行。它有机会在方法执行之前和之后完成工作，并确定方法实际上何时，如何以及甚至是否实际执行。如果您需要以线程安全的方式（例如，启动和停止计时器）在方法执行之前和之后共享状态，则通常会使用around建议。始终使用符合您要求的最不强大的建议形式; 如果简单，在建议之前不要使用周围的建议。
+
+使用aop:around元素声明around建议。advice方法的第一个参数必须是type ProceedingJoinPoint。在建议的主体内，调用导致底层方法执行proceed()的ProceedingJoinPoint原因。该proceed方法也可以调用传入Object[]- 数组中的值将在进行时用作方法执行的参数。有关打电话的说明，请参阅 周围的建议Object[]。
+```xml
+<aop:aspect id="aroundExample" ref="aBean">
+
+    <aop:around
+        pointcut-ref="businessService"
+        method="doBasicProfiling"/>
+
+    ...
+
+</aop:aspect>
+```
+doBasicProfiling建议的实现与@AspectJ示例中的完全相同（当然减去注释）：
+
+```java?linenums
+public Object doBasicProfiling(ProceedingJoinPoint pjp) throws Throwable {
+    // start stopwatch
+    Object retVal = pjp.proceed();
+    // stop stopwatch
+    return retVal;
+}
+```
+建议参数
+基于模式的声明样式支持完全类型化的建议，方法与@AspectJ支持描述的方式相同 - 通过名称匹配切入点参数和建议方法参数。有关详细信息，请参阅建议参数 如果您希望显式指定通知方法的参数名称（不依赖于前面描述的检测策略），那么这是使用arg-names advice元素的属性完成的，该属性的处理方式与建议中的“argNames”属性相同。如确定参数名称中所述的注释。例如：
+
+```xml
+<aop:before
+    pointcut="com.xyz.lib.Pointcuts.anyPublicMethod() and @annotation(auditable)"
+    method="audit"
+    arg-names="auditable"/>
+```
+该arg-names属性接受以逗号分隔的参数名称列表。
+
+下面是一个基于XSD的方法的一个稍微复杂的例子，它说明了与一些强类型参数一起使用的一些建议。
+
+```java?linenums
+package x.y.service;
+
+public interface FooService {
+
+    Foo getFoo(String fooName, int age);
+}
+
+public class DefaultFooService implements FooService {
+
+    public Foo getFoo(String name, int age) {
+        return new Foo(name, age);
+    }
+}
+```
+接下来是方面。请注意，该profile(..)方法接受许多强类型参数，第一个参数恰好是用于继续方法调用的连接点：此参数的存在表明该参数 profile(..)将用作around建议：
+
+```java?linenums
+package x.y;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.springframework.util.StopWatch;
+
+public class SimpleProfiler {
+
+    public Object profile(ProceedingJoinPoint call, String name, int age) throws Throwable {
+        StopWatch clock = new StopWatch("Profiling for '" + name + "' and '" + age + "'");
+        try {
+            clock.start(call.toShortString());
+            return call.proceed();
+        } finally {
+            clock.stop();
+            System.out.println(clock.prettyPrint());
+        }
+    }
+}
+```
+最后，这是为特定连接点执行上述建议所需的XML配置：
+
+```xml
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!-- this is the object that will be proxied by Spring's AOP infrastructure -->
+    <bean id="fooService" class="x.y.service.DefaultFooService"/>
+
+    <!-- this is the actual advice itself -->
+    <bean id="profiler" class="x.y.SimpleProfiler"/>
+
+    <aop:config>
+        <aop:aspect ref="profiler">
+
+            <aop:pointcut id="theExecutionOfSomeFooServiceMethod"
+                expression="execution(* x.y.service.FooService.getFoo(String,int))
+                and args(name, age)"/>
+
+            <aop:around pointcut-ref="theExecutionOfSomeFooServiceMethod"
+                method="profile"/>
+
+        </aop:aspect>
+    </aop:config>
+
+</beans>
+```
+如果我们有以下驱动程序脚本，我们将在标准输出上得到类似的输出：
+
+```java?linenums
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import x.y.service.FooService;
+
+public final class Boot {
+
+    public static void main(final String[] args) throws Exception {
+        BeanFactory ctx = new ClassPathXmlApplicationContext("x/y/plain.xml");
+        FooService foo = (FooService) ctx.getBean("fooService");
+        foo.getFoo("Pengo", 12);
+    }
+}
+
+```
+```
+StopWatch 'Profiling for 'Pengo' and '12'': running time (millis) = 0
+-----------------------------------------
+ms     %     Task name
+-----------------------------------------
+00000  ?  execution(getFoo)
+```
+建议订购
+当多个建议需要在同一个连接点（执行方法）执行时，排序规则如建议排序中所述。方面之间的优先级是通过将Order注释添加到支持方面的bean或通过使bean实现Ordered接口来确定的。
+#### 5.3.4. 简介
+简介（在AspectJ中称为类型间声明）使方面能够声明建议对象实现给定接口，并代表这些对象提供该接口的实现。
+
+使用aop:declare-parents内部元素进行介绍。aop:aspect 此元素用于声明匹配类型具有新父级（因此名称）。例如，给定接口UsageTracked和该接口的实现 DefaultUsageTracked，以下方面声明服务接口的所有实现者也实现UsageTracked接口。（例如，为了通过JMX公开统计信息。）
+
+```xml
+<aop:aspect id="usageTrackerAspect" ref="usageTracking">
+
+    <aop:declare-parents
+        types-matching="com.xzy.myapp.service.*+"
+        implement-interface="com.xyz.myapp.service.tracking.UsageTracked"
+        default-impl="com.xyz.myapp.service.tracking.DefaultUsageTracked"/>
+
+    <aop:before
+        pointcut="com.xyz.myapp.SystemArchitecture.businessService()
+            and this(usageTracked)"
+            method="recordUsage"/>
+
+</aop:aspect>
+```
+支持usageTrackingbean 的类将包含以下方法：
+
+```java?linenums
+public void recordUsage(UsageTracked usageTracked) {
+    usageTracked.incrementUseCount();
+}
+```
+要实现的接口由implement-interface属性确定。types-matching属性的值是AspectJ类型模式： - 任何匹配类型的bean都将实现该UsageTracked接口。请注意，在上面示例的before advice中，服务bean可以直接用作UsageTracked接口的实现。如果以编程方式访问bean，您将编写以下内容：
+```java?linenums
+UsageTracked usageTracked = (UsageTracked) context.getBean("myService");
+```
+#### 5.3.5. Aspect实例化模型
+模式定义方面唯一受支持的实例化模型是单例模型。在将来的版本中可能支持其他实例化模型。
+
+#### 5.3.6. 顾问
+“顾问”的概念是从Spring中定义的AOP支持中提出的，并且在AspectJ中没有直接的等价物。顾问就像一个小小的独立方面，只有一条建议。建议本身由bean表示，并且必须实现Spring中Advice类型中描述的建议接口 之一。顾问可以利用AspectJ切入点表达式。
+
+Spring支持使用<aop:advisor>元素的顾问概念。您最常见的是它与事务性建议一起使用，它在Spring中也有自己的命名空间支持。这是它的外观：
+
+```xml
+<aop:config>
+
+    <aop:pointcut id="businessService"
+        expression="execution(* com.xyz.myapp.service.*.*(..))"/>
+
+    <aop:advisor
+        pointcut-ref="businessService"
+        advice-ref="tx-advice"/>
+
+</aop:config>
+
+<tx:advice id="tx-advice">
+    <tx:attributes>
+        <tx:method name="*" propagation="REQUIRED"/>
+    </tx:attributes>
+</tx:advice>
+
+```
+除了pointcut-ref上例中使用的pointcut属性外，您还可以使用该 属性来内联定义切入点表达式。
+
+要定义顾问程序的优先级以便建议可以参与排序，请使用该order属性来定义Ordered顾问程序的值。
+
+#### 5.3.7. 例
+让我们看看当使用模式支持重写时，示例中的并发锁定失败重试示例如何 。
+
+由于并发问题（例如，死锁失败者），业务服务的执行有时会失败。如果重试该操作，下次很可能会成功。对于适合在这种情况下重试的业务服务（幂等操作不需要回到用户进行冲突解决），我们希望透明地重试操作以避免客户端看到 PessimisticLockingFailureException。这是明确跨越服务层中的多个服务的要求，因此是通过方面实现的理想选择。
+
+因为我们想要重试操作，所以我们需要使用around建议，以便我们可以多次调用proceed。以下是基本方面实现的外观（它只是使用模式支持的常规Java类）：
+```java?linenums
+public class ConcurrentOperationExecutor implements Ordered {
+
+    private static final int DEFAULT_MAX_RETRIES = 2;
+
+    private int maxRetries = DEFAULT_MAX_RETRIES;
+    private int order = 1;
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
+    public int getOrder() {
+        return this.order;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
+    }
+
+    public Object doConcurrentOperation(ProceedingJoinPoint pjp) throws Throwable {
+        int numAttempts = 0;
+        PessimisticLockingFailureException lockFailureException;
+        do {
+            numAttempts++;
+            try {
+                return pjp.proceed();
+            }
+            catch(PessimisticLockingFailureException ex) {
+                lockFailureException = ex;
+            }
+        } while(numAttempts <= this.maxRetries);
+        throw lockFailureException;
+    }
+
+}
+```
+请注意，方面实现了Ordered接口，因此我们可以将方面的优先级设置为高于事务通知（我们每次重试时都需要一个新的事务）。在maxRetries和order属性都可以在Spring中配置。主要操作发生在doConcurrentOperationaround advice方法中。我们试图继续进行，如果我们失败了，PessimisticLockingFailureException我们只需再试一次，除非我们已经用完所有的重试尝试。
+
+```
+此类与@AspectJ示例中使用的类相同，但删除了注释。
+```
+相应的Spring配置是：
+```xml
+<aop:config>
+
+    <aop:aspect id="concurrentOperationRetry" ref="concurrentOperationExecutor">
+
+        <aop:pointcut id="idempotentOperation"
+            expression="execution(* com.xyz.myapp.service.*.*(..))"/>
+
+        <aop:around
+            pointcut-ref="idempotentOperation"
+            method="doConcurrentOperation"/>
+
+    </aop:aspect>
+
+</aop:config>
+
+<bean id="concurrentOperationExecutor"
+    class="com.xyz.myapp.service.impl.ConcurrentOperationExecutor">
+        <property name="maxRetries" value="3"/>
+        <property name="order" value="100"/>
+</bean>
+```
+请注意，目前我们假设所有业务服务都是幂等的。如果不是这种情况，我们可以通过引入Idempotent注释来优化方面，以便它只重试真正的幂等操作：
+```java?linenums
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Idempotent {
+    // marker annotation
+}
+```
+并使用注释来注释服务操作的实现。仅重试幂等操作的方面更改只涉及改进切入点表达式，以便只有@Idempotent操作匹配：
+
+```xml
+<aop:pointcut id="idempotentOperation"
+        expression="execution(* com.xyz.myapp.service.*.*(..)) and
+        @annotation(com.xyz.myapp.service.Idempotent)"/>
+```
+
 ### 5.4. 选择要使用的AOP声明样式
+一旦确定某个方面是实现给定需求的最佳方法，您如何决定使用Spring AOP或AspectJ，以及Aspect语言（代码）样式，@ AspectJ注释样式还是Spring XML样式？这些决策受到许多因素的影响，包括应用程序要求，开发工具和团队对AOP的熟悉程度。
+
+#### 5.4.1. Spring AOP还是完整的AspectJ？
+使用最简单的方法。Spring AOP比使用完整的AspectJ更简单，因为不需要将AspectJ编译器/ weaver引入开发和构建过程。如果您只需要建议在Spring bean上执行操作，那么Spring AOP是正确的选择。如果您需要建议不是由Spring容器管理的对象（通常是域对象），那么您将需要使用AspectJ。如果您希望建议除简单方法执行之外的连接点（例如，字段获取或设置连接点等），您还需要使用AspectJ。
+
+使用AspectJ时，您可以选择AspectJ语言语法（也称为“代码样式”）或@AspectJ注释样式。显然，如果您没有使用Java 5+，那么已经为您做出了选择...使用代码样式。如果方面在您的设计中发挥重要作用，并且您能够使用Eclipse 的AspectJ开发工具（AJDT）插件，则AspectJ语言语法是首选选项：它更清晰，更简单，因为该语言是专门为写入而设计的方面。如果您没有使用Eclipse，或者只有几个方面在您的应用程序中不起主要作用，那么您可能需要考虑使用@AspectJ样式并在IDE中坚持使用常规Java编译，并添加一个方面编织阶段到您的构建脚本。
+#### 5.4.2. @AspectJ或Spring for AOP的XML？
+如果您选择使用Spring AOP，那么您可以选择@AspectJ或XML样式。需要考虑各种权衡。
+
+XML样式对于现有的Spring用户来说是最熟悉的，它由真正的POJO支持。当使用AOP作为配置企业服务的工具时，XML可能是一个不错的选择（一个好的测试是你是否认为切入点表达式是你可能想要独立改变的配置的一部分）。使用XML风格可以说，从您的配置中可以更清楚地了解系统中存在哪些方面。
+
+XML风格有两个缺点。首先，它没有完全封装它在一个地方解决的要求的实现。DRY原则规定，系统中的任何知识都应该有单一，明确，权威的表示。使用XML样式时，知识如何实现的需求分为支持bean类的声明和配置文件中的XML。使用@AspectJ样式时，有一个模块 - 方面 - 用于封装此信息。其次，XML样式比@AspectJ样式更容易受到限制：仅支持“singleton”方面实例化模型，并且不可能组合在XML中声明的命名切入点。例如，在@AspectJ样式中，您可以编写如下内容：
+```java?linenums
+@Pointcut(execution(* get*()))
+public void propertyAccess() {}
+
+@Pointcut(execution(org.xyz.Account+ *(..))
+public void operationReturningAnAccount() {}
+
+@Pointcut(propertyAccess() && operationReturningAnAccount())
+public void accountPropertyAccess() {}
+```
+在XML样式中，我可以声明前两个切入点：
+```xml
+<aop:pointcut id="propertyAccess"
+        expression="execution(* get*())"/>
+
+<aop:pointcut id="operationReturningAnAccount"
+        expression="execution(org.xyz.Account+ *(..))"/>
+
+```
+XML方法的缺点是您无法 accountPropertyAccess通过组合这些定义来定义切入点。
+
+@AspectJ样式支持额外的实例化模型和更丰富的切入点组合。它具有将方面保持为模块化单元的优点。它还具有以下优点：Spring AOP和AspectJ可以理解（并因此消耗）@AspectJ方面 - 因此，如果您以后决定需要AspectJ的功能来实现其他要求，那么迁移到AspectJ非常容易基于方法。总的来说，只要你的方面不仅仅是企业服务的简单“配置”，Spring团队更喜欢@AspectJ风格。
 ### 5.5. 混合方面类型
+完全可以使用自动代理支持，模式定义<aop:aspect>方面，<aop:advisor>声明的顾问程序以及甚至在相同配置中使用Spring 1.2样式定义的代理和拦截器来混合@AspectJ样式方面。所有这些都是使用相同的底层支持机制实现的，并且可以毫无困难地共存。
+
+
 ### 5.6. 代理机制
+Spring AOP使用JDK动态代理或CGLIB为给定目标对象创建代理。（只要有选择，JDK动态代理就是首选）。
+
+如果要代理的目标对象实现至少一个接口，则将使用JDK动态代理。目标类型实现的所有接口都将被代理。如果目标对象未实现任何接口，则将创建CGLIB代理。
+
+如果要强制使用CGLIB代理（例如，代理为目标对象定义的每个方法，而不仅仅是那些由其接口实现的方法），您可以这样做。但是，有一些问题需要考虑：
+
+- final 方法无法建议，因为它们无法被覆盖。
+
+- 从Spring 3.2开始，不再需要将CGLIB添加到项目类路径中，因为CGLIB类在org.springframework下重新打包并直接包含在spring-core JAR中。这意味着基于CGLIB的代理支持“正常工作”的方式与JDK动态代理总是一样。
+
+- 从Spring 4.0开始，代理对象的构造函数将不再被调用两次，因为CGLIB代理实例将通过Objenesis创建。只有当您的JVM不允许构造函数绕过时，您才可能看到来自Spring的AOP支持的双重调用和相应的调试日志条目。
+
+
+要强制使用CGLIB代理，请将元素proxy-target-class属性的值设置<aop:config>为true：
+```xml
+<aop:config proxy-target-class="true">
+    <!-- other beans defined here... -->
+</aop:config>
+```
+要在使用@AspectJ autoproxy支持时强制CGLIB代理，请将元素的'proxy-target-class'属性设置 <aop:aspectj-autoproxy>为true：
+```xml
+<aop:aspectj-autoproxy proxy-target-class="true"/>
+```
+```
+多个<aop:config/>部分在运行时折叠为单个统一自动代理创建器，它应用指定的任何部分（通常来自不同的XML bean定义文件）的最强代理设置 <aop:config/>。这也适用于<tx:annotation-driven/>和<aop:aspectj-autoproxy/> 元素。
+
+需要明确的是：在使用proxy-target-class="true"上<tx:annotation-driven/>， <aop:aspectj-autoproxy/>或<aop:config/>元素将强制使用CGLIB代理对他们三个。
+
+
+```
+#### 5.6.1. 了解AOP代理
+Spring AOP是基于代理的。在编写自己的方面或使用Spring Framework提供的任何基于Spring AOP的方面之前，掌握最后一个语句实际意味着什么的语义是非常重要的。
+
+首先考虑一个场景，其中有一个普通的，无代理的，没有特别关注它的直接对象引用，如下面的代码片段所示。
+
+```java?linenums
+public class SimplePojo implements Pojo {
+
+    public void foo() {
+        // this next method invocation is a direct call on the 'this' reference
+        this.bar();
+    }
+
+    public void bar() {
+        // some logic...
+    }
+}
+```
+如果在对象引用上调用方法，则直接在该对象引用上调用该方法，如下所示。
+
+```java?linenums
+public class Main {
+
+    public static void main(String[] args) {
+
+        Pojo pojo = new SimplePojo();
+
+        // this is a direct method call on the 'pojo' reference
+        pojo.foo();
+    }
+}
+```
+当客户端代码具有的引用是代理时，事情会稍微改变。请考虑以下图表和代码段。
+
+```java?linenums
+public class Main {
+
+    public static void main(String[] args) {
+
+        ProxyFactory factory = new ProxyFactory(new SimplePojo());
+        factory.addInterface(Pojo.class);
+        factory.addAdvice(new RetryAdvice());
+
+        Pojo pojo = (Pojo) factory.getProxy();
+
+        // this is a method call on the proxy!
+        pojo.foo();
+    }
+}
+```
+要了解这里的关键问题是，里面的客户端代码main(..)中的 Main类拥有一个代理的引用。这意味着对该对象引用的方法调用将是代理上的调用，因此代理将能够委托给与该特定方法调用相关的所有拦截器（通知）。但是，一旦调用最终到达目标对象，SimplePojo 在这种情况下的引用，它可能对其自身进行的任何方法调用（例如 this.bar()or this.foo()）将针对此引用而不是代理进行调用。这具有重要意义。这意味着自我调用 不是 将导致与方法调用相关的建议有机会执行。
+
+好的，那要做些什么呢？最好的方法（这里松散地使用最好的术语）是重构代码，以便不会发生自我调用。当然，这确实需要你做一些工作，但这是最好的，最少侵入性的方法。接下来的方法绝对是可怕的，而且我几乎要谨慎地指出它，因为它太可怕了。你可以（窒息！）通过这样做完全将你的类中的逻辑绑定到Spring AOP
+```java?linenums
+public class SimplePojo implements Pojo {
+
+    public void foo() {
+        // this works, but... gah!
+        ((Pojo) AopContext.currentProxy()).bar();
+    }
+
+    public void bar() {
+        // some logic...
+    }
+}
+```
+这样完全将你的代码与Spring AOP，并且让类本身知道它是在AOP方面，它在飞行AOP面对正在使用的事实。在创建代理时，还需要一些额外的配置：
+```java?linenums
+public class Main {
+
+    public static void main(String[] args) {
+
+        ProxyFactory factory = new ProxyFactory(new SimplePojo());
+        factory.adddInterface(Pojo.class);
+        factory.addAdvice(new RetryAdvice());
+        factory.setExposeProxy(true);
+
+        Pojo pojo = (Pojo) factory.getProxy();
+
+        // this is a method call on the proxy!
+        pojo.foo();
+    }
+}
+```
+最后，必须注意的是AspectJ没有这种自我调用问题，因为它不是基于代理的AOP框架。
+
+
+
 ### 5.7. 程序化创建@AspectJ Proxies
+除了使用无论是在配置方面的声明<aop:config>或者 <aop:aspectj-autoproxy>，还可以通过编程方式来创建通知目标对象的代理。有关Spring的AOP API的完整详细信息，请参阅下一章。在这里，我们希望专注于使用@AspectJ方面自动创建代理的能力。
+
+该类org.springframework.aop.aspectj.annotation.AspectJProxyFactory可用于为一个或多个@AspectJ方面建议的目标对象创建代理。此类的基本用法非常简单，如下所示。有关完整信息，请参阅javadocs。
+
+```java?linenums
+// create a factory that can generate a proxy for the given target object
+AspectJProxyFactory factory = new AspectJProxyFactory(targetObject);
+
+// add an aspect, the class must be an @AspectJ aspect
+// you can call this as many times as you need with different aspects
+factory.addAspect(SecurityManager.class);
+
+// you can also add existing aspect instances, the type of the object supplied must be an @AspectJ aspect
+factory.addAspect(usageTracker);
+
+// now get the proxy object...
+MyInterfaceType proxy = factory.getProxy();
+```
 ### 5.8. 在Spring应用程序中使用AspectJ
+到目前为止，我们在本章中介绍的所有内容都是纯粹的Spring AOP。在本节中，我们将讨论如何使用AspectJ编译器/编织器代替Spring AOP，或者除了Spring AOP之外，如果您的需求超出了Spring AOP提供的功能。
+
+Spring附带了一个小型AspectJ方面库，可以在您的发行版中单独使用spring-aspects.jar; 您需要将其添加到类路径中才能使用其中的方面。使用AspectJ依赖注入域对象与Spring和其他Spring方面的AspectJ讨论该库的内容以及如何使用它。使用Spring IoC配置AspectJ方面讨论了如何依赖注入使用AspectJ编译器编织的AspectJ方面。最后， 在Spring Framework中使用AspectJ进行加载时编织，使用AspectJ介绍了Spring应用程序的加载时编织。
+#### 5.8.1. 使用AspectJ依赖注入域对象与Spring
+Spring容器实例化并配置在应用程序上下文中定义的bean。在 给定包含要应用的配置的bean定义的名称的情况下，还可以要求bean工厂配置预先存在的对象。它spring-aspects.jar包含一个注释驱动的方面，利用此功能允许依赖注入任何对象。该支持旨在用于在任何容器控制之外创建的对象。域对象通常属于此类别，因为它们通常使用new运算符以编程方式创建，或者由于数据库查询而由ORM工具创建 。
+
+该@Configurable注解标记了一个类可以通过Spring驱动的配置。在最简单的情况下，它可以用作标记注释：
+
+```java?linenums
+package com.xyz.myapp.domain;
+
+import org.springframework.beans.factory.annotation.Configurable;
+
+@Configurable
+public class Account {
+    // ...
+}
+```
+当以这种方式用作标记接口时，Spring将Account使用与完全限定类型名称（com.xyz.myapp.domain.Account）具有相同名称的bean定义（通常为prototype-scoped）来配置带注释类型的新实例（在本例中 ）。由于bean的默认名称是其类型的完全限定名称，因此声明原型定义的简便方法是省略该id属性：
+```xml
+<bean class="com.xyz.myapp.domain.Account" scope="prototype">
+    <property name="fundsTransferService" ref="fundsTransferService"/>
+</bean>
+```
+如果要显式指定要使用的原型bean定义的名称，可以直接在注释中执行此操作：
+
+```java?linenums
+package com.xyz.myapp.domain;
+
+import org.springframework.beans.factory.annotation.Configurable;
+
+@Configurable("account")
+public class Account {
+    // ...
+}
+```
+Spring现在将查找名为“account”的bean定义，并将其用作配置新Account实例的定义。
+
+您还可以使用自动装配来避免必须指定专用的bean定义。要让Spring应用自动装配，请使用注释的autowire属性 @Configurable：分别指定@Configurable(autowire=Autowire.BY_TYPE)或 @Configurable(autowire=Autowire.BY_NAME按类型或按名称指定自动装配。作为替代方案，从Spring 2.5开始，最好@Configurable通过使用@Autowired或@Inject在字段或方法级别为bean 指定显式的，注释驱动的依赖注入（ 有关更多详细信息，请参阅基于注释的容器配置）。
+
+最后，您可以使用该dependencyCheck属性（例如 :)在新创建和配置的对象中为对象引用启用Spring依赖项检查@Configurable(autowire=Autowire.BY_NAME,dependencyCheck=true)。如果此属性设置为true，则Spring将在配置后验证是否已设置所有属性（不是基元或集合）。
+
+单独使用注释当然不会做任何事情。它是 AnnotationBeanConfigurerAspect在spring-aspects.jar作用于注释的存在。本质上，方面说“在从注释类型的新对象的初始化返回之后@Configurable，根据注释的属性使用Spring配置新创建的对象”。在此上下文中， 初始化是指新实例化的对象（例如，用new操作符实例化的对象）以及Serializable正在进行反序列化的对象（例如，通过 readResolve（））。
+```
+上段中的一个关键短语是“ 本质上 ”。对于大多数情况，“ 在从新对象初始化返回之后 ”的确切语义将是正确的......在此上下文中，“ 初始化之后 ”意味着将在构造对象之后注入依赖项- 这意味着依赖项将无法在类的构造函数体中使用。如果您希望在构造函数体执行之前注入依赖项，从而可以在构造函数体中使用，那么您需要在@Configurable声明上定义它， 如下所示：
+
+@Configurable(preConstruction=true)
+您可以在AspectJ编程指南的本附录中找到有关AspectJ 中各种切入点类型的语言语义的更多信息
+```
+为此，必须使用AspectJ编织器编写带注释的类型 - 您可以使用构建时Ant或Maven任务来执行此操作（请参阅 AspectJ开发环境指南）或加载时编织（请参阅加载时间）在Spring Framework中使用AspectJ进行编织。它 AnnotationBeanConfigurerAspect本身需要通过Spring进行配置（以获取对用于配置新对象的bean工厂的引用）。如果您使用的是基于Java的配置，只需添加@EnableSpringConfigured到任何 @Configuration类。
+
+```java?linenums
+@Configuration
+@EnableSpringConfigured
+public class AppConfig {
+
+}
+```
+如果您更喜欢基于XML的配置，Spring context命名空间 定义了一个方便的context:spring-configured元素：
+
+```xml
+<context:spring-configured/>
+```
+在配置方面之前@Configurable创建的对象实例将导致向调试日志发出消息，并且不会发生对象的配置。一个示例可能是Spring配置中的bean，它在Spring初始化时创建域对象。在这种情况下，您可以使用“depends-on”bean属性手动指定bean依赖于配置方面。
+```xml
+<bean id="myService"
+        class="com.xzy.myapp.service.MyService"
+        depends-on="org.springframework.beans.factory.aspectj.AnnotationBeanConfigurerAspect">
+
+    <!-- ... -->
+
+</bean>
+```
+```
+不要@Configurable通过bean配置器方面激活处理，除非你真的想在运行时依赖它的语义。特别是，请确保您不使用@Configurable在容器上注册为常规Spring bean的bean类：否则，您将获得双初始化，一次通过容器，一次通过方面。
+```
+单元测试@Configurable对象
+@Configurable支持的目标之一是实现域对象的独立单元测试，而没有与硬编码查找相关的困难。如果 @Configurable类型尚未由AspectJ编织，那么注释在单元测试期间没有影响，您可以在测试对象中设置模拟或存根属性引用并正常进行。如果@Configurable类型已通过AspectJ织然后仍然可以在容器为正常的外部单元的测试，但你会看到在每次构建时间的警告消息@Configurable，指示它没有被Spring配置对象。
+
+使用多个应用程序上下文
+在AnnotationBeanConfigurerAspect用于实现@Configurable的支持是一个AspectJ singleton切面。单例方面的范围与static成员的范围相同 ，也就是说每个类加载器有一个方面实例来定义类型。这意味着如果在同一个类加载器层次结构中定义多个应用程序上下文，则需要考虑在何处定义 @EnableSpringConfiguredbean以及在spring-aspects.jar类路径上放置的位置。
+
+考虑一个典型的Spring Web应用程序配置，其中包含定义公共业务服务的共享父应用程序上下文以及支持它们所需的一切，以及每个servlet包含一个包含特定于该servlet的定义的子应用程序上下文。所有这些上下文将在同一个类加载器层次结构中共存，因此 AnnotationBeanConfigurerAspect只能包含对其中一个的引用。在这种情况下，我们建议@EnableSpringConfigured在共享（父）应用程序上下文中定义bean：这定义了您可能希望注入域对象的服务。结果是您无法使用@Configurable机制（可能不是您想要做的事情！）来使用对子（特定于servlet的）上下文中定义的bean的引用来配置域对象。
+
+当部署在同一个容器内的多个web的应用程序，确保每个网络的应用程序加载类型spring-aspects.jar（例如，通过将使用其自己的类加载器spring-aspects.jar中'WEB-INF/lib'）。如果spring-aspects.jar仅添加到容器范围的类路径（并因此由共享父类加载器加载），则所有Web应用程序将共享相同的方面实例，这可能不是您想要的。
+#### 5.8.2. AspectJ的其他Spring方面
+除了@Configurable方面之外，还spring-aspects.jar包含一个AspectJ方面，可用于为使用注释注释的类型和方法驱动Spring的事务管理@Transactional。这主要适用于希望在Spring容器之外使用Spring Framework的事务支持的用户。
+
+解释@Transactional注释的方面是 AnnotationTransactionAspect。使用此方面时，必须注释 实现类（和/或该类中的方法），而不是该类实现的接口（如果有）。AspectJ遵循Java的规则，即接口上的注释不会被继承。
+
+一@Transactional类上注解指定任何执行默认事务语义公共操作的类。
+
+@Transactional类中方法的注释会覆盖类注释（如果存在）给出的默认事务语义。可以注释任何可见性的方法，包括私有方法。直接注释非公共方法是获得执行此类方法的事务划分的唯一方法。
+
+```xml
+从Spring Framework 4.2开始，spring-aspects提供了一个类似的方面，为标准javax.transaction.Transactional注释提供完全相同的功能。查看 JtaAnnotationTransactionAspect更多详细信息。
+```
+对于想要使用Spring配置和事务管理支持但不想（或不能）使用注释的AspectJ程序员，spring-aspects.jar 还包含abstract可以扩展以提供自己的切入点定义的方面。有关更多信息，请参阅AbstractBeanConfigurerAspect和 AbstractTransactionAspect方面的来源。作为示例，以下摘录显示了如何使用与完全限定类名匹配的原型bean定义编写方面来配置域模型中定义的所有对象实例：
+
+```java?linenums
+public aspect DomainObjectConfiguration extends AbstractBeanConfigurerAspect {
+
+    public DomainObjectConfiguration() {
+        setBeanWiringInfoResolver(new ClassNameBeanWiringInfoResolver());
+    }
+
+    // the creation of a new bean (any object in the domain model)
+    protected pointcut beanCreation(Object beanInstance) :
+        initialization(new(..)) &&
+        SystemArchitecture.inDomainModel() &&
+        this(beanInstance);
+
+}
+```
+#### 5.8.3. 使用Spring IoC配置AspectJ方面
+在Spring应用程序中使用AspectJ方面时，很自然希望能够使用Spring配置这些方面。AspectJ运行时本身负责方面创建，并且通过Spring配置AspectJ创建方面的方法取决于方面使用的AspectJ实例化模型（per-xxx子句）。
+
+AspectJ的大多数方面都是单例方面。这些方面的配置非常简单：只需创建一个引用方面类型的bean定义，并包含bean属性'factory-method="aspectOf"'。这可以确保Spring通过询问AspectJ来获取方面实例，而不是尝试创建实例本身。例如：
+```xml
+<bean id="profiler" class="com.xyz.profiler.Profiler"
+        factory-method="aspectOf">
+
+    <property name="profilingStrategy" ref="jamonProfilingStrategy"/>
+</bean>
+```
+非单例方面更难配置：但是可以通过创建原型bean定义并使用@Configurable支持 spring-aspects.jar来配置方面实例（一旦它们具有由AspectJ运行时创建的bean）来实现。
+
+如果您想要使用AspectJ编写一些@AspectJ方面（例如，使用域模型类型的加载时编织）和其他要与Spring AOP一起使用的@AspectJ方面，并且这些方面都是使用Spring配置的，那么你需要告诉Spring AOP @AspectJ autoproxying支持配置中定义的@AspectJ方面的确切子集应该用于自动代理。您可以通过<include/>在<aop:aspectj-autoproxy/> 声明中使用一个或多个元素来完成此操作。每个<include/>元素都指定一个名称模式，只有名称与至少一个模式匹配的bean才会用于Spring AOP autoproxy配置：
+
+```xml
+<aop:aspectj-autoproxy>
+    <aop:include name="thisBean"/>
+    <aop:include name="thatBean"/>
+</aop:aspectj-autoproxy>
+
+```
+```
+不要被<aop:aspectj-autoproxy/>元素的名称误导：使用它将导致创建Spring AOP代理。这里只使用@AspectJ样式的方面声明，但不涉及AspectJ运行时。
+```
+#### 5.8.4. 在Spring框架中使用AspectJ进行加载时编织
+加载时编织（LTW）是指在将AspectJ方面加载到Java虚拟机（JVM）中时将其编织到应用程序的类文件中的过程。本节的重点是在Spring Framework的特定上下文中配置和使用LTW：本节不是对LTW的介绍。有关LTW细节的详细信息以及仅使用AspectJ配置LTW（完全不涉及Spring），请参阅AspectJ开发环境指南的 LTW部分。
+
+Spring Framework为AspectJ LTW带来的附加值是对编织过程实现更细粒度的控制。“Vanilla”AspectJ LTW使用Java（5+）代理实现，该代理通过在启动JVM时指定VM参数来启用。因此，它是JVM范围的设置，在某些情况下可能很好，但通常有点过于粗糙。支持Spring的LTW使您能够在每个ClassLoader的基础上打开LTW ，这显然更精细，并且在“单JVM多应用程序”环境中更有意义（例如在典型的环境中）应用服务器环境）。
+
+此外，在某些环境中，此支持可实现加载时编织，而无需对应用程序服务器的启动脚本进行任何修改，这些修改将需要添加-javaagent:path/to/aspectjweaver.jar或（如本节后面部分所述） -javaagent:path/to/org.springframework.instrument-{version}.jar（以前称为 spring-agent.jar）。开发人员只需修改构成应用程序上下文的一个或多个文件即可启用加载时编织，而不是依赖通常负责部署配置的管理员（如启动脚本）。
+
+既然销售情况已经结束，那么让我们首先介绍使用Spring的AspectJ LTW的快速示例，然后详细介绍以下示例中介绍的元素。有关完整示例，请参阅 Petclinic示例应用程序。
+
+第一个例子
+我们假设您是一名应用程序开发人员，负责诊断系统中某些性能问题的原因。我们要做的不是打破分析工具，而是打开一个简单的分析方面，这将使我们能够非常快速地获得一些性能指标，以便我们可以立即将更精细的分析工具应用于该特定区域然后。
+```
+此处提供的示例使用XML样式配置，也可以使用Java Configuration配置和使用@AspectJ 。具体而言，@EnableLoadTimeWeaving注释可以用作替代 <context:load-time-weaver/>（参见下面的详细信息）。
+
+
+```
+这是剖析方面。没有什么太花哨，只是一个快速而肮脏的基于时间的探查器，使用@ AspectJ风格的方面声明。
+
+```java?linenums
+package foo;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.util.StopWatch;
+import org.springframework.core.annotation.Order;
+
+@Aspect
+public class ProfilingAspect {
+
+    @Around("methodsToBeProfiled()")
+    public Object profile(ProceedingJoinPoint pjp) throws Throwable {
+        StopWatch sw = new StopWatch(getClass().getSimpleName());
+        try {
+            sw.start(pjp.getSignature().getName());
+            return pjp.proceed();
+        } finally {
+            sw.stop();
+            System.out.println(sw.prettyPrint());
+        }
+    }
+
+    @Pointcut("execution(public * foo..*.*(..))")
+    public void methodsToBeProfiled(){}
+}
+
+```
+我们还需要创建一个META-INF/aop.xml文件，以通知AspectJ weaver我们想要将我们编织ProfilingAspect到我们的类中。此文件约定，即所调用的Java类路径上的文件（或多个文件）的存在 META-INF/aop.xml是标准AspectJ。
+
+```xml
+<!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
+<aspectj>
+
+    <weaver>
+        <!-- only weave classes in our application-specific packages -->
+        <include within="foo.*"/>
+    </weaver>
+
+    <aspects>
+        <!-- weave in just this aspect -->
+        <aspect name="foo.ProfilingAspect"/>
+    </aspects>
+
+</aspectj>
+```
+现在到Spring特定的配置部分。我们需要配置一个 LoadTimeWeaver（后面会解释，现在就把它当作信任）。此加载时weaver是负责将一个或多个META-INF/aop.xml文件中的方面配置编织到应用程序的类中的基本组件。好处是它不需要很多配置，如下所示（您可以指定更多选项，但稍后会详细介绍）。
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!-- a service object; we will be profiling its methods -->
+    <bean id="entitlementCalculationService"
+            class="foo.StubEntitlementCalculationService"/>
+
+    <!-- this switches on the load-time weaving -->
+    <context:load-time-weaver/>
+</beans>
+```
+现在所有必需的工件都已到位 - 方面，META-INF/aop.xml 文件和Spring配置 - 让我们创建一个简单的驱动程序类，其中包含一个main(..)演示LTW 的 方法。
+```java?linenums
+package foo;
+
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public final class Main {
+
+    public static void main(String[] args) {
+
+        ApplicationContext ctx = new ClassPathXmlApplicationContext("beans.xml", Main.class);
+
+        EntitlementCalculationService entitlementCalculationService
+            = (EntitlementCalculationService) ctx.getBean("entitlementCalculationService");
+
+        // the profiling aspect is 'woven' around this method execution
+        entitlementCalculationService.calculateEntitlement();
+    }
+}
+```
+还有最后一件事要做。对这一部分的介绍确实说可以选择性地在ClassLoaderSpring 上开启LTW ，这是事实。但是，仅为此示例，我们将使用Java代理（随Spring提供）来打开LTW。这是我们用来运行上面Main类的命令行：
+```
+java -javaagent：C：/projects/foo/lib/global/spring-instrument.jar foo.Main
+
+```
+这-javaagent是一个标志，用于指定和启用 代理程序来检测在JVM上运行的程序。Spring Framework附带了一个代理程序，InstrumentationSavingAgent它包含 在上面示例spring-instrument.jar中作为-javaagent参数值提供的代理程序中。
+
+执行Main程序的输出看起来如下所示。（我已经Thread.sleep(..)在calculateEntitlement() 实现中引入了一个声明，以便探查器实际捕获0毫秒以外的东西 - 01234毫秒不是 AOP引入的开销:)）
+
+```
+Calculating entitlement
+
+StopWatch 'ProfilingAspect': running time (millis) = 1234
+------ ----- ----------------------------
+ms     %     Task name
+------ ----- ----------------------------
+01234  100%  calculateEntitlement
+
+```
+由于LTW是使用完整的AspectJ实现的，因此我们不仅限于为Spring bean提供建议; 程序的以下细微变化Main将产生相同的结果。
+
+```java?linenums
+package foo;
+
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public final class Main {
+
+    public static void main(String[] args) {
+
+        new ClassPathXmlApplicationContext("beans.xml", Main.class);
+
+        EntitlementCalculationService entitlementCalculationService =
+            new StubEntitlementCalculationService();
+
+        // the profiling aspect will be 'woven' around this method execution
+        entitlementCalculationService.calculateEntitlement();
+    }
+}
+```
+注意在上面的程序中我们只是简单地引导Spring容器，然后创建一个StubEntitlementCalculationService完全在Spring上下文之外的新实例......分析建议仍然被编织进去。
+
+不可否认的是，这个例子很简单......但是在上面的例子中已经引入了Spring中LTW支持的基础知识，本节的其余部分将详细解释每个配置和用法背后的“原因”。
+```xml
+在ProfilingAspect本例中使用可能是基本的，但它是非常有用的。这是开发人员在开发期间（当然）可以使用的开发时间方面的一个很好的例子，然后很容易从部署到UAT或生产中的应用程序的构建中排除。
+```
+方面
+您在LTW中使用的方面必须是AspectJ方面。它们可以用AspectJ语言本身编写，也可以用@ AspectJ风格编写方面。这意味着您的方面都是有效的AspectJ 和 Spring AOP方面。此外，编译的方面类需要在类路径上可用。
+
+'META-INF / aop.xml文件'
+AspectJ LTW基础结构使用一个或多个META-INF/aop.xml 文件进行配置，这些文件位于Java类路径上（直接或更常见于jar文件中）。
+
+该文件的结构和内容在主要的AspectJ参考文档中有详细介绍，感兴趣的读者可以 参考该资源。（我很欣赏这一部分是简短的，但aop.xml文件是100％AspectJ - 没有适用于它的特定于Spring的信息或语义，因此没有额外的值可以作为结果贡献），所以相反而不是重述AspectJ开发人员所写的相当令人满意的部分，我只是指导你那里。）
+
+必需的库（JARS）
+您至少需要以下库才能使用Spring Framework对AspectJ LTW的支持：
+
+- spring-aop.jar （版本2.5或更高版本，加上所有必需的依赖项）
+
+- aspectjweaver.jar （1.6.8或更高版本）
+
+如果您使用Spring提供的代理来启用检测，您还需要：
+
+s- pring-instrument.jar
+
+弹簧配置
+Spring的LTW支持的关键组件是LoadTimeWeaver接口（在 org.springframework.instrument.classloading包中），以及Spring发行版附带的众多实现。一个LoadTimeWeaver是负责添加一个或一个以上java.lang.instrument.ClassFileTransformers的ClassLoader在运行时，这将打开大门，各种各样有趣的应用方式，其中一个正好是各方面的LTW。
+```
+如果您不熟悉运行时类文件转换的想法，建议您java.lang.instrument在继续之前阅读该包的javadoc API文档。这不是一项繁重的工作，因为那里有相当令人讨厌的珍贵文档......关键接口和类至少会在您阅读本章时作为参考。
+
+```
+LoadTimeWeaver为特定项目配置a ApplicationContext可以像添加一行一样简单。（请注意，您几乎肯定需要使用一个 ApplicationContext作为您的Spring容器 - 通常BeanFactory是不够的，因为LTW支持使用BeanFactoryPostProcessors。）
+
+要启用Spring Framework的LTW支持，您需要配置a LoadTimeWeaver，这通常使用@EnableLoadTimeWeaving注释完成。
+
+```java?linenums
+@Configuration
+@EnableLoadTimeWeaving
+public class AppConfig {
+
+}
+```
+或者，如果您更喜欢基于XML的配置，请使用该 <context:load-time-weaver/>元素。请注意，该元素是在context命名空间中定义的 。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:load-time-weaver/>
+
+</beans>
+```
+上面的配置将自动为您定义和注册一些LTW特定的基础架构bean，例如a LoadTimeWeaver和an AspectJWeavingEnabler。默认LoadTimeWeaver是DefaultContextLoadTimeWeaver类，它尝试修饰自动检测到的LoadTimeWeaver：LoadTimeWeaver“自动检测” 的确切类型 取决于您的运行时环境（在下表中总结）。
+
+表13. DefaultContextLoadTimeWeaver LoadTimeWeavers
+请注意，这些只是LoadTimeWeavers在使用时自动检测的 DefaultContextLoadTimeWeaver：当然可以准确指定 LoadTimeWeaver您希望使用的实现。
+
+要LoadTimeWeaver使用Java配置指定特定实现 LoadTimeWeavingConfigurer接口并覆盖该getLoadTimeWeaver()方法：
+
+```java?linenums
+@Configuration
+@EnableLoadTimeWeaving
+public class AppConfig implements LoadTimeWeavingConfigurer {
+
+    @Override
+    public LoadTimeWeaver getLoadTimeWeaver() {
+        return new ReflectiveLoadTimeWeaver();
+    }
+}
+```
+如果使用基于XML的配置，则可以将完全限定的类名指定为 元素weaver-class上属性的值<context:load-time-weaver/>：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <context:load-time-weaver
+            weaver-class="org.springframework.instrument.classloading.ReflectiveLoadTimeWeaver"/>
+
+</beans>
+```
+在LoadTimeWeaver由配置定义和注册可以使用公知的名称Spring容器以后提取loadTimeWeaver。请记住，LoadTimeWeaver存在就像Spring的LTW基础架构添加一个或多个的机制一样ClassFileTransformers。ClassFileTransformerLTW 的实际内容 是ClassPreProcessorAgentAdapter（来自org.aspectj.weaver.loadtime包）类。有关ClassPreProcessorAgentAdapter更多详细信息，请参阅类的类级别javadoc ，因为编织实际如何实现的细节超出了本节的范围。
+
+剩下要讨论的配置有一个最终属性： aspectjWeaving属性（或者aspectj-weaving如果您使用的是XML）。这是一个控制LTW是否启用的简单属性; 它是如此简单。它接受以下总结的三个可能值中的一个，autodetect如果该属性不存在，则默认值为 。
+
+表14. AspectJ编织属性值
+特定于环境的配置
+最后一节包含在应用程序服务器和Web容器等环境中使用Spring的LTW支持时所需的任何其他设置和配置。
+
+Tomcat的
+从历史上看，Apache Tomcat的默认类加载器不支持类转换，这就是Spring提供满足此需求的增强实现的原因。命名TomcatInstrumentableClassLoader，加载程序适用于Tomcat 6.0及更高版本。
+
+```
+TomcatInstrumentableClassLoader不再在Tomcat 8.0及更高版本上定义。相反，让Spring InstrumentableClassLoader 通过TomcatLoadTimeWeaver策略自动使用Tomcat的新本机设施。
+
+```
+如果您仍然需要使用TomcatInstrumentableClassLoader，可以为每个 Web应用程序单独注册，如下所示：
+
+- 复制org.springframework.instrument.tomcat.jar到$ CATALINA_HOME / lib，其中 $ CATALINA_HOME表示Tomcat安装的根目录）
+
+- 通过编辑Web应用程序上下文文件，指示Tomcat使用自定义类加载器（而不是默认值）：
+
+
+```xml
+<Context path="/myWebApp" docBase="/my/webApp/location">
+    <Loader
+        loaderClass="org.springframework.instrument.classloading.tomcat.TomcatInstrumentableClassLoader"/>
+</Context>
+```
+Apache Tomcat（6.0+）支持多个上下文位置：
+
+- 服务器配置文件 - $ CATALINA_HOME / conf / server.xml
+
+- 默认上下文配置 - $ CATALINA_HOME / conf / context.xml - 影响所有已部署的Web应用程序
+
+- 每个Web应用程序配置，可以在服务器端部署在 $ CATALINA_HOME / conf / [enginename] / [hostname] / [webapp] -context.xml，也可以嵌入在META-INF / context的web-app存档中.XML
+
+为了提高效率，建议使用嵌入式per-web-app配置样式，因为它只会影响使用自定义类加载器的应用程序，并且不需要对服务器配置进行任何更改。有关可用上下文位置的更多详细信息，请参阅Tomcat 6.0.x 文档。
+
+或者，考虑使用Spring提供的通用VM代理，在Tomcat的启动脚本中指定（参见上文）。这将使所有已部署的Web应用程序都可以使用检测，无论它们恰好运行在哪个ClassLoader上。
+
+WebLogic，WebSphere，Resin，GlassFish，JBoss
+最新版本的WebLogic Server（版本10及更高版本），IBM WebSphere Application Server（版本7及更高版本），Resin（3.1及更高版本）和JBoss（6.x或更高版本）提供了一个能够进行本地检测的ClassLoader。Spring的原生LTW利用这种ClassLoader来实现AspectJ编织。您可以通过简单地激活加载时编织来启用LTW，如前所述。具体来说，你就不会需要修改启动脚本来添加-javaagent:path/to/spring-instrument.jar。
+
+请注意，支持GlassFish检测的ClassLoader仅在其EAR环境中可用。对于GlassFish Web应用程序，请按照上面概述的Tomcat设置说明进行操作。
+
+请注意，在JBoss 6.x上，需要禁用应用服务器扫描，以防止它在应用程序实际启动之前加载类。一个快速的解决方法是向您的工件添加一个名为WEB-INF/jboss-scanning.xml以下内容的文件：
+
+```xml
+<scanning xmlns="urn:jboss:scanning:1.0"/>
+
+```
+通用Java应用程序
+如果在不支持或不支持现有LoadTimeWeaver实现的环境中需要类检测，则JDK代理可以是唯一的解决方案。对于这种情况，Spring提供了InstrumentationLoadTimeWeaver，它需要一个特定于Spring的（但非常通用的）VM代理 org.springframework.instrument-{version}.jar（以前称为spring-agent.jar）。
+
+要使用它，必须通过提供以下JVM选项来启动具有Spring代理的虚拟机：
+```
+-javaagent:/path/to/org.springframework.instrument-{version}.jar
+```
+请注意，这需要修改VM启动脚本，这可能会阻止您在应用程序服务器环境中使用它（具体取决于您的操作策略）。此外，JDK代理将检测整个 VM，这可能证明是昂贵的。
+
+出于性能原因，仅当目标环境（例如Jetty）没有（或不支持）专用LTW时，才建议使用此配置。
+
+
 ### 5.9. 更多资源
+有关AspectJ的更多信息可以在AspectJ网站上找到。
+
+由Adrian Colyer等人撰写的Eclipse AspectJ一书。人。（Addison-Wesley，2005）为AspectJ语言提供了全面的介绍和参考。
+
+强烈推荐Ramnivas Laddad（Manning，2009）出版的“ AspectJ in Action”第二版。本书的重点是AspectJ，但是很多一般的AOP主题都在探索中（在某种程度上）。
 ## 6. Spring AOP API
 ### 6.1. 介绍
+前一章描述了Spring使用@AspectJ和基于模式的方面定义对AOP的支持。在本章中，我们将讨论较低级别的Spring AOP API以及Spring 1.2应用程序中常用的AOP支持。对于新应用程序，我们建议使用前一章中描述的Spring 2.0及更高版本的AOP支持，但在使用现有应用程序时，或者在阅读书籍和文章时，您可能会遇到Spring 1.2样式示例。Spring 5仍然向后兼容Spring 1.2，本章中描述的所有内容在Spring 5中都得到了完全支持。
+
+
 ### 6.2. Spring中的Pointcut API
+让我们看一下Spring如何处理关键的切入点概念。
+
+#### 6.2.1. 概念
+Spring的切入点模型使切入点重用独立于建议类型。可以使用相同的切入点来定位不同的建议。
+
+该org.springframework.aop.Pointcut接口是中央接口，用来将通知到特定的类和方法。完整的界面如下所示：
+
+```java?linenums
+public interface Pointcut {
+
+    ClassFilter getClassFilter();
+
+    MethodMatcher getMethodMatcher();
+
+}
+```
+将Pointcut接口拆分为两部分允许重用类和方法匹配部分，以及细粒度合成操作（例如与另一个方法匹配器执行“联合”）。
+
+该ClassFilter接口用于将切入点限制为给定的一组目标类。如果matches()方法始终返回true，则将匹配所有目标类：
+
+```java?linenums
+public interface ClassFilter {
+
+    boolean matches(Class clazz);
+}
+
+```
+该MethodMatcher接口通常更重要。完整的界面如下所示：
+
+```java?linenums
+public interface MethodMatcher {
+
+    boolean matches(Method m, Class targetClass);
+
+    boolean isRuntime();
+
+    boolean matches(Method m, Class targetClass, Object[] args);
+}
+
+```
+该matches(Method, Class)方法用于测试此切入点是否与目标类上的给定方法匹配。可以在创建AOP代理时执行此评估，以避免需要对每个方法调用进行测试。如果2参数matches方法对给定方法返回true，并且isRuntime()MethodMatcher 的方法返回true，则将在每次方法调用时调用3参数匹配方法。这使切入点能够在执行目标通知之前立即查看传递给方法调用的参数。
+
+大多数MethodMatchers都是静态的，这意味着它们的isRuntime()方法返回false。在这种情况下，永远不会调用3参数匹配方法。
+```
+如果可能，尝试使切入点成为静态，允许AOP框架在创建AOP代理时缓存切入点评估的结果。
+```
+#### 6.2.2. 切入点的操作
+Spring支持对切入点的操作：特别是联合和交集。
+
+- Union表示切入点匹配的方法。
+
+- 交叉表示两个切入点匹配的方法。
+
+- 联盟通常更有用。
+
+- 可以使用org.springframework.aop.support.Pointcuts类中的静态方法或使用同一包中的ComposablePointcut类来 组合切入点 。但是，使用AspectJ切入点表达式通常是一种更简单的方法。
+
+#### 6.2.3. AspectJ表达式切入点
+从2.0开始，Spring使用的最重要的切入点类型是 org.springframework.aop.aspectj.AspectJExpressionPointcut。这是一个切入点，它使用AspectJ提供的库来解析AspectJ切入点表达式字符串。
+
+有关受支持的AspectJ切入点基元的讨论，请参见上一章。
+
+#### 6.2.4. 便利切入点实现
+Spring提供了几种方便的切入点实现。有些可以开箱即用; 其他人打算在特定于应用程序的切入点中进行子类化。
+
+静态切入点
+静态切入点基于方法和目标类，不能考虑方法的参数。静态切入点对于大多数用途来说已经足够 - 而且最好。当第一次调用方法时，Spring可能只评估一次静态切入点：之后，不需要再次使用每个方法调用来评估切入点。
+
+让我们考虑Spring中包含的一些静态切入点实现。
+
+正则表达式切入点
+指定静态切入点的一种显而易见的方法是正则表达式。除Spring之外的几个AOP框架使这成为可能。 org.springframework.aop.support.JdkRegexpMethodPointcut是一个通用的正则表达式切入点，使用JDK中的正则表达式支持。
+
+使用JdkRegexpMethodPointcut该类，您可以提供模式字符串列表。如果其中任何一个匹配，则切入点将评估为true。（所以结果实际上是这些切入点的结合。）
+
+用法如下所示：
+
+```xml
+<bean id="settersAndAbsquatulatePointcut"
+        class="org.springframework.aop.support.JdkRegexpMethodPointcut">
+    <property name="patterns">
+        <list>
+            <value>.*set.*</value>
+            <value>.*absquatulate</value>
+        </list>
+    </property>
+</bean>
+```
+Spring提供了一个便利类，RegexpMethodPointcutAdvisor它允许我们也引用一个建议（记住建议可以是一个拦截器，建议之前，抛出建议等）。在幕后，Spring将使用一个JdkRegexpMethodPointcut。使用RegexpMethodPointcutAdvisor简化了布线，因为一个bean封装了切入点和建议，如下所示：
+
+```xml
+<bean id="settersAndAbsquatulateAdvisor"
+        class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice">
+        <ref bean="beanNameOfAopAllianceInterceptor"/>
+    </property>
+    <property name="patterns">
+        <list>
+            <value>.*set.*</value>
+            <value>.*absquatulate</value>
+        </list>
+    </property>
+</bean>
+```
+RegexpMethodPointcutAdvisor可以与任何建议类型一起使用。
+
+属性驱动的切入点
+一种重要的静态切入点是元数据驱动的切入点。这使用元数据属性的值：通常是源级元数据。
+
+动态切入点
+与静态切入点相比，动态切入点的评估成本更高。它们考虑了方法参数以及静态信息。这意味着必须使用每个方法调用来评估它们; 参数不能缓存，因为参数会有所不同。
+
+主要的例子是control flow切入点。
+
+控制流量切入点
+Spring控制流切入点在概念上类似于AspectJ cflow切入点，虽然功能较弱。（目前无法指定切入点在由另一个切入点匹配的连接点下方执行。）控制流切入点与当前调用堆栈匹配。例如，如果连接点由com.mycompany.web包中的方法或SomeCaller类调用，则可能会触发。使用org.springframework.aop.support.ControlFlowPointcut类指定控制流切入点。
+
+```
+在运行时评估控制流切入点的成本远远高于其他动态切入点。在Java 1.4中，成本大约是其他动态切入点的5倍。
+```
+#### 6.2.5. 切入点超类
+Spring提供了有用的切入点超类来帮助您实现自己的切入点。
+
+因为静态切入点最有用，所以您可能会将StaticMethodMatcherPointcut子类化，如下所示。这需要实现一个抽象方法（尽管可以覆盖其他方法来自定义行为）：
+```java?linenums
+class TestStaticPointcut extends StaticMethodMatcherPointcut {
+
+    public boolean matches(Method m, Class targetClass) {
+        // return true if custom criteria match
+    }
+}
+```
+还有动态切入点的超类。
+
+您可以在Spring 1.0 RC2及更高版本中使用任何建议类型的自定义切入点。
+
+#### 6.2.6. 自定义切入点
+因为Spring AOP中的切入点是Java类，而不是语言功能（如在AspectJ中），所以可以声明自定义切入点，无论是静态还是动态。Spring中的自定义切入点可以是任意复杂的。但是，如果可能，建议使用AspectJ切入点表达式语言。
+```
+更高版本的Spring可能会为JAC提供的“语义切入点”提供支持：例如，“所有改变目标对象中实例变量的方法”。
+```
+
 ### 6.3. Spring中的Advice API
+现在让我们来看看Spring AOP如何处理建议。
+
+#### 6.3.1. 建议生命周期
+每个建议都是一个Spring bean。建议实例可以在所有建议对象之间共享，也可以对每个建议对象唯一。这对应于每个类或 每个实例的建议。
+
+每类建议最常使用。它适用于交易顾问等通用建议。这些不依赖于代理对象的状态或添加新状态; 他们只是按照方法和论点行事。
+
+每个实例的建议适用于介绍，以支持mixin。在这种情况下，建议将状态添加到代理对象。
+
+可以在同一个AOP代理中混合使用共享和每个实例的建议。
+
+#### 6.3.2. Spring中的建议类型
+
+Spring提供了几种开箱即用的建议类型，并且可以扩展以支持任意建议类型。让我们看看基本概念和标准建议类型。
+
+拦截建议
+Spring中最基本的建议类型是关于建议的拦截。
+
+Spring符合AOP Alliance接口，可以使用方法拦截来获取建议。实现around建议的MethodInterceptors应该实现以下接口：
+
+```java?linenums
+public interface MethodInterceptor extends Interceptor {
+
+    Object invoke(MethodInvocation invocation) throws Throwable;
+}
+```
+该方法的MethodInvocation参数invoke()公开了被调用的方法; 目标连接点; AOP代理; 和方法的参数。该 invoke()方法应该返回调用的结果：连接点的返回值。
+
+一个简单的MethodInterceptor实现如下：
+```java?linenums
+public class DebugInterceptor implements MethodInterceptor {
+
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+        System.out.println("Before: invocation=[" + invocation + "]");
+        Object rval = invocation.proceed();
+        System.out.println("Invocation returned");
+        return rval;
+    }
+}
+```
+请注意对MethodInvocation proceed()方法的调用。这沿拦截器链向下进入连接点。大多数拦截器都会调用此方法，并返回其返回值。但是，与任何around建议一样，MethodInterceptor可以返回不同的值或抛出异常而不是调用proceed方法。但是，你没有充分的理由不想这样做！
+```
+MethodInterceptors提供与其他符合AOP Alliance标准的AOP实现的互操作性。本节其余部分讨论的其他建议类型实现了常见的AOP概念，但是采用Spring特定的方式。虽然使用最具体的建议类型有一个优势，但如果您可能希望在另一个AOP框架中运行该方面，请坚持使用MethodInterceptor建议。请注意，切入点目前在框架之间不可互操作，AOP联盟目前不定义切入点接口。
+```
+在建议之前
+更简单的建议类型是之前的建议。这不需要MethodInvocation 对象，因为它只在进入方法之前被调用。
+
+之前建议的主要优点是不需要调用该proceed() 方法，因此不会无意中无法继续拦截链。
+
+的MethodBeforeAdvice接口如下所示。（Spring的API设计允许在建议之前使用字段，尽管通常的对象适用于字段拦截，并且Spring不太可能实现它）。
+```java?linenums
+public interface MethodBeforeAdvice extends BeforeAdvice {
+
+    void before(Method m, Object[] args, Object target) throws Throwable;
+}
+```
+请注意返回类型是void。在建议之前可以在连接点执行之前插入自定义行为，但不能更改返回值。如果before advice抛出异常，这将中止拦截器链的进一步执行。异常将传播回拦截器链。如果未选中，或者在被调用方法的签名上，它将直接传递给客户端; 否则它将被AOP代理包装在未经检查的异常中。
+
+Spring中一个before advice的示例，它计算所有方法调用：
+
+```java?linenums
+public class CountingBeforeAdvice implements MethodBeforeAdvice {
+
+    private int count;
+
+    public void before(Method m, Object[] args, Object target) throws Throwable {
+        ++count;
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
+```
+```
+之前建议可以与任何切入点一起使用。
+```
+提出建议
+如果连接点引发异常，则在返回连接点后调用抛出建议。Spring提供类型投掷建议。请注意，这意味着该 org.springframework.aop.ThrowsAdvice接口不包含任何方法：它是一个标记接口，用于标识给定对象实现一个或多个类型化throws建议方法。这些应该是以下形式：
+
+```java?linenums
+afterThrowing([Method, args, target], subclassOfThrowable)
+```
+只需要最后一个参数。方法签名可以有一个或四个参数，具体取决于通知方法是否对方法和参数感兴趣。以下类是throws建议的示例。
+
+如果RemoteException抛出a（包括子类），则调用以下建议：
+```java?linenums
+public class RemoteThrowsAdvice implements ThrowsAdvice {
+
+    public void afterThrowing(RemoteException ex) throws Throwable {
+        // Do something with remote exception
+    }
+}
+```
+如果ServletException抛出a，则调用以下建议。与上面的建议不同，它声明了4个参数，因此它可以访问被调用的方法，方法参数和目标对象：
+```java?linenums
+public class ServletThrowsAdviceWithArguments implements ThrowsAdvice {
+
+    public void afterThrowing(Method m, Object[] args, Object target, ServletException ex) {
+        // Do something with all arguments
+    }
+}
+```
+最后一个例子说明了如何在一个类中使用这两个方法，它们处理两者RemoteException和ServletException。可以在单个类中组合任意数量的throws建议方法。
+
+```java?linenums
+public static class CombinedThrowsAdvice implements ThrowsAdvice {
+
+    public void afterThrowing(RemoteException ex) throws Throwable {
+        // Do something with remote exception
+    }
+
+    public void afterThrowing(Method m, Object[] args, Object target, ServletException ex) {
+        // Do something with all arguments
+    }
+}
+```
+```
+如果throws-advice方法本身抛出异常，它将覆盖原始异常（即更改抛出给用户的异常）。覆盖异常通常是RuntimeException; 这与任何方法签名兼容。但是，如果throws-advice方法抛出一个已检查的异常，则它必须匹配目标方法的声明异常，因此在某种程度上与特定的目标方法签名相关联。不要抛出与目标方法签名不兼容的未声明的已检查异常！
+```
+```
+
+抛出建议可以与任何切入点一起使用。
+```
+在回复建议后
+在Spring中返回后的建议必须实现 org.springframework.aop.AfterReturningAdvice接口，如下所示：
+
+```java?linenums
+public interface AfterReturningAdvice extends Advice {
+
+    void afterReturning(Object returnValue, Method m, Object[] args, Object target)
+            throws Throwable;
+}
+```
+返回后的建议可以访问返回值（它无法修改），调用方法，方法参数和目标。
+
+返回通知后的以下内容计算所有未抛出异常的成功方法调用：
+
+```java?linenums
+public class CountingAfterReturningAdvice implements AfterReturningAdvice {
+
+    private int count;
+
+    public void afterReturning(Object returnValue, Method m, Object[] args, Object target)
+            throws Throwable {
+        ++count;
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
+```
+此建议不会更改执行路径。如果它抛出异常，则会抛出拦截器链而不是返回值。
+
+```
+返回建议后可以使用任何切入点。
+```
+介绍建议
+Spring将介绍建议视为一种特殊的拦截建议。
+
+简介需要一个IntroductionAdvisor和一个IntroductionInterceptor实现以下接口：
+
+```java?linenums
+public interface IntroductionInterceptor extends MethodInterceptor {
+
+    boolean implementsInterface(Class intf);
+}
+```
+invoke()从AOP Alliance MethodInterceptor接口继承的方法必须实现介绍：即，如果被调用的方法在引入的接口上，则引入拦截器负责处理方法调用 - 它无法调用proceed()。
+
+引言建议不能与任何切入点一起使用，因为它仅适用于类，而不是方法，级别。您只能使用带有IntroductionAdvisor以下方法的介绍建议 ：
+```java?linenums
+public interface IntroductionAdvisor extends Advisor, IntroductionInfo {
+
+    ClassFilter getClassFilter();
+
+    void validateInterfaces() throws IllegalArgumentException;
+}
+
+public interface IntroductionInfo {
+
+    Class[] getInterfaces();
+}
+```
+没有MethodMatcher，因此没有Pointcut与介绍建议相关联。只有类过滤是合乎逻辑的。
+
+该getInterfaces()方法返回此顾问程序引入的接口。
+
+该validateInterfaces()方法在内部用于查看引入的接口是否可以由配置的实现IntroductionInterceptor。
+
+让我们看一下Spring测试套件中的一个简单示例。假设我们想要将以下接口引入一个或多个对象：
+
+```java?linenums
+public interface Lockable {
+    void lock();
+    void unlock();
+    boolean locked();
+}
+
+```
+这说明了一个混合。我们希望能够将建议对象转换为Lockable，无论其类型如何，并调用锁定和解锁方法。如果我们调用lock（）方法，我们希望所有setter方法都抛出一个LockedException。因此，我们可以添加一个方面，该方面提供使对象不可变的能力，而不需要它们知道它：AOP的一个很好的例子。
+
+首先，我们需要一个IntroductionInterceptor能够解决繁重问题的工作。在这种情况下，我们扩展了org.springframework.aop.support.DelegatingIntroductionInterceptor 便利类。我们可以直接实现IntroductionInterceptor，但DelegatingIntroductionInterceptor在大多数情况下使用 最好。
+
+该DelegatingIntroductionInterceptor设计将导入委托到真正实现导入接口（S）的，隐藏拦截的使用来做到这一点。可以使用构造函数参数将委托设置为任何对象; 默认委托（当使用no-arg构造函数时）就是这个。因此，在下面的示例中，委托是LockMixin子类DelegatingIntroductionInterceptor。给定一个委托（默认情况下），一个DelegatingIntroductionInterceptor实例查找委托实现的所有接口（除了IntroductionInterceptor），并支持对其中任何接口的介绍。子类LockMixin可以调用该suppressInterface(Class intf) 方法来抑制不应该公开的接口。但是，无论IntroductionInterceptor准备支持多少接口，都可以 IntroductionAdvisorused将控制实际暴露的接口。引入的接口将隐藏目标对同一接口的任何实现。
+
+从而LockMixin扩展DelegatingIntroductionInterceptor和实现Lockable 自己。超类自动选择可以支持Lockable引入，因此我们不需要指定。我们可以用这种方式引入任意数量的接口。
+
+注意locked实例变量的使用。这有效地将额外状态添加到目标对象中保存的状态。
+
+```java?linenums
+public class LockMixin extends DelegatingIntroductionInterceptor implements Lockable {
+
+    private boolean locked;
+
+    public void lock() {
+        this.locked = true;
+    }
+
+    public void unlock() {
+        this.locked = false;
+    }
+
+    public boolean locked() {
+        return this.locked;
+    }
+
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+        if (locked() && invocation.getMethod().getName().indexOf("set") == 0) {
+            throw new LockedException();
+        }
+        return super.invoke(invocation);
+    }
+
+}
+```
+通常没有必要覆盖invoke()方法： DelegatingIntroductionInterceptor实现 - 如果引入方法则调用委托方法，否则进入连接点 - 通常就足够了。在本例中，我们需要添加一个检查：如果处于锁定模式，则不能调用setter方法。
+
+所需的介绍顾问很简单。它需要做的就是保持一个独特的 LockMixin实例，并指定引入的接口 - 在这种情况下，只是 Lockable。一个更复杂的例子可能会引用引入拦截器（它将被定义为原型）：在这种情况下，没有与a相关的配置LockMixin，所以我们只是使用它来创建它new。
+```java?linenums
+public class LockMixinAdvisor extends DefaultIntroductionAdvisor {
+
+    public LockMixinAdvisor() {
+        super(new LockMixin(), Lockable.class);
+    }
+}
+```
+我们可以非常简单地应用这个顾问：它不需要配置。（但是，有 必要：IntroductionInterceptor没有 IntroductionAdvisor就不可能使用。）和往常一样，顾问必须是每个实例，因为它是有状态的。我们需要一个不同的实例LockMixinAdvisor，因此 LockMixin需要每个建议的对象。顾问包括建议对象的状态的一部分。
+
+我们可以以编程方式，使用Advised.addAdvisor()方法或（推荐的方式）在XML配置中应用此顾问程序，就像任何其他顾问程序一样。下面讨论的所有代理创建选项，包括“自动代理创建器”，正确处理引入和有状态混合。
+
+
 ### 6.4. Spring中的Advisor API
+在Spring中，Advisor是一个只包含与切入点表达式关联的建议对象的方面。
+
+除了介绍的特殊情况，任何顾问都可以使用任何建议。 org.springframework.aop.support.DefaultPointcutAdvisor是最常用的顾问类。例如，它可以与a MethodInterceptor，BeforeAdvice或 一起使用ThrowsAdvice。
+
+可以在同一个AOP代理中混合Spring中的顾问程序和通知类型。例如，您可以在一个代理配置中使用拦截建议，抛出建议和建议之前：Spring将自动创建必要的拦截器链。
 ### 6.5. 使用ProxyFactoryBean创建AOP代理
+如果您正在为业务对象使用Spring IoC容器（ApplicationContext或BeanFactory） - 您应该这样做！ - 您将需要使用Spring的AOP FactoryBeans之一。（请记住，工厂bean引入了一个间接层，使其能够创建不同类型的对象。）
+
+```
+Spring AOP支持还使用工厂bean。
+```
+在Spring中创建AOP代理的基本方法是使用 org.springframework.aop.framework.ProxyFactoryBean。这样可以完全控制将要应用的切入点和建议及其排序。但是，如果您不需要这样的控制，则有更简单的选项。
+
+#### 6.5.1. 基本
+的ProxyFactoryBean，像其它的FactoryBean实现中，引入了一个间接的水平。如果ProxyFactoryBean使用名称定义foo，引用的对象foo不是ProxyFactoryBean实例本身，而是由方法ProxyFactoryBean实现创建的对象getObject()。此方法将创建包装目标对象的AOP代理。
+
+使用一个ProxyFactoryBean或另一个IoC感知类来创建AOP代理的最重要的好处之一是，它意味着IoC也可以管理建议和切入点。这是一个强大的功能，可以实现其他AOP框架难以实现的某些方法。例如，一个建议本身可以引用应用程序对象（除了目标，它应该在任何AOP框架中可用），受益于依赖注入提供的所有可插入性。
+#### 6.5.2. JavaBean属性
+FactoryBean与Spring提供的大多数实现一样， ProxyFactoryBean该类本身就是一个JavaBean。其属性用于：
+
+- 指定要代理的目标。
+
+- 指定是否使用CGLIB（请参阅下文以及基于JDK和CGLIB的代理）。
+
+一些关键属性继承自org.springframework.aop.framework.ProxyConfig （Spring中所有AOP代理工厂的超类）。这些关键属性包括：
+- proxyTargetClass：true如果要代理目标类，而不是目标类的接口。如果此属性值设置为true，则将创建CGLIB代理（但另请参阅基于JDK和CGLIB的代理）。
+
+- optimize：控制是否将积极优化应用于通过CGLIB创建的代理 。除非完全理解相关AOP代理如何处理优化，否则不应轻易使用此设置。目前仅用于CGLIB代理; 它对JDK动态代理没有影响。
+
+- frozen：如果是代理配置frozen，则不再允许更改配置。这既可以作为轻微的优化，也可以用于Advised 在创建代理后不希望调用者能够操作代理（通过接口）的情况。此属性的默认值为 false，因此允许添加其他建议等更改。
+
+- exposeProxy：确定是否应该在当前代理中公开当前代理， ThreadLocal以便目标可以访问它。如果目标需要获取代理并且exposeProxy属性设置为true，则目标可以使用该 AopContext.currentProxy()方法。
+
+
+其他特定属性ProxyFactoryBean包括：
+
+- proxyInterfaces：String接口名称数组。如果未提供，则将使用目标类的CGLIB代理（但另请参阅基于JDK和CGLIB的代理）。
+
+- interceptorNames：要应用的字符串数组Advisor，拦截器或其他建议名称。以先到先得的方式订购非常重要。也就是说，列表中的第一个拦截器将是第一个能够拦截调用的拦截器。
+
+名称是当前工厂中的bean名称，包括来自祖先工厂的bean名称。你不能在这里提到bean引用，因为这样做会导致 ProxyFactoryBean忽略通知的单例设置。
+
+您可以使用星号（*）附加拦截器名称。这将导致应用所有顾问bean，其名称以要应用星号之前的部分开头。使用此功能的示例可以在使用“全局”顾问程序中找到。
+
+- singleton：无论getObject()方法调用的频率如何，工厂是否应该返回单个对象。一些FactoryBean实现提供了这样的方法。默认值为true。如果您想使用有状态建议 - 例如，对于有状态的mixins - 使用原型建议以及单例值 false。
+
+#### 6.5.3. 基于JDK和CGLIB的代理
+本节作为关于如何ProxyFactoryBean 选择为特定目标对象（即要代理）创建基于JDK和CGLIB的代理之一的权威文档。
+
+```
+ProxyFactoryBean关于创建基于JDK或CGLIB的代理的行为在Spring的1.2.x和2.0版本之间发生了变化。在ProxyFactoryBean现在表现关于与上述的自动检测接口相似的语义 TransactionProxyFactoryBean类。
+```
+如果要代理的目标对象的类（以下简称为目标类）未实现任何接口，则将创建基于CGLIB的代理。这是最简单的方案，因为JDK代理是基于接口的，没有接口意味着甚至不可能进行JDK代理。只需插入目标bean，并通过interceptorNames属性指定拦截器列表。请注意，即使已将proxyTargetClass属性 ProxyFactoryBean设置为，也将创建基于CGLIB的代理false。（显然这没有任何意义，最好从bean定义中删除，因为它最多是多余的，最糟糕的是混淆。）
+
+如果目标类实现一个（或多个）接口，则创建的代理类型取决于该配置ProxyFactoryBean。
+
+如果已将proxyTargetClass属性ProxyFactoryBean设置为true，则将创建基于CGLIB的代理。这是有道理的，并且符合最少惊喜的原则。即使已将proxyInterfaces属性 ProxyFactoryBean设置为一个或多个完全限定的接口名称，该proxyTargetClass属性设置为true 将导致基于CGLIB的代理生效。
+
+如果已将proxyInterfaces属性ProxyFactoryBean设置为一个或多个完全限定的接口名称，则将创建基于JDK的代理。创建的代理将实现proxyInterfaces 属性中指定的所有接口; 如果目标类碰巧实现了比proxyInterfaces属性中指定的接口多得多的接口，那么这一切都很好，但返回的代理不会实现这些额外的接口。
+
+如果proxyInterfaces财产ProxyFactoryBean已不被设置，但是目标类的确实现了一个（或多个）接口，那么 ProxyFactoryBean会自动检测到这个目标类已经实现了至少一个接口，一个基于JDK的代理将被创造。实际代理的接口将是目标类实现的所有接口; 实际上，这与仅提供目标类对proxyInterfaces属性实现的每个接口的列表相同。但是，它的工作量明显减少，并且不太容易出现错别字。
+
+#### 6.5.4. 代理接口
+让我们看一个简单的实例ProxyFactoryBean。这个例子涉及：
+
+- 一个目标bean将被代理。这是下面示例中的“personTarget”bean定义。
+
+- 用于提供建议的顾问和拦截器。
+
+- AOP代理bean定义，指定目标对象（personTarget bean）和要代理的接口，以及要应用的建议。
+
+```xml
+<bean id="personTarget" class="com.mycompany.PersonImpl">
+    <property name="name" value="Tony"/>
+    <property name="age" value="51"/>
+</bean>
+
+<bean id="myAdvisor" class="com.mycompany.MyAdvisor">
+    <property name="someProperty" value="Custom string property value"/>
+</bean>
+
+<bean id="debugInterceptor" class="org.springframework.aop.interceptor.DebugInterceptor">
+</bean>
+
+<bean id="person"
+    class="org.springframework.aop.framework.ProxyFactoryBean">
+    <property name="proxyInterfaces" value="com.mycompany.Person"/>
+
+    <property name="target" ref="personTarget"/>
+    <property name="interceptorNames">
+        <list>
+            <value>myAdvisor</value>
+            <value>debugInterceptor</value>
+        </list>
+    </property>
+</bean>
+```
+请注意，该interceptorNames属性采用String列表：当前工厂中的拦截器或顾问程序的bean名称。可以使用顾问，拦截器，返回之前，投掷建议对象。顾问的排序很重要。
+
+```
+您可能想知道为什么列表不包含bean引用。这样做的原因是，如果ProxyFactoryBean的singleton属性设置为false，则它必须能够返回独立的代理实例。如果任何顾问本身就是原型，则需要返回一个独立的实例，因此必须能够从工厂获得原型的实例; 持有参考是不够的。
+```
+上面的“person”bean定义可以用来代替Person实现，如下所示：
+
+```java?linenums
+Person person = (Person) factory.getBean("person");
+```
+与普通Java对象一样，同一IoC上下文中的其他bean可以表达对它的强类型依赖：
+
+```xml
+<bean id="personUser" class="com.mycompany.PersonUser">
+    <property name="person"><ref bean="person"/></property>
+</bean>
+```
+PersonUser此示例中的类将公开Person类型的属性。就其而言，可以透明地使用AOP代理来代替“真实”的人实现。但是，它的类将是一个动态代理类。可以将其转换为Advised界面（下面讨论）。
+
+可以使用匿名内部bean隐藏目标和代理之间的区别 ，如下所示。只有ProxyFactoryBean定义不同; 仅包含完整性的建议：
+```xml
+<bean id="myAdvisor" class="com.mycompany.MyAdvisor">
+    <property name="someProperty" value="Custom string property value"/>
+</bean>
+
+<bean id="debugInterceptor" class="org.springframework.aop.interceptor.DebugInterceptor"/>
+
+<bean id="person" class="org.springframework.aop.framework.ProxyFactoryBean">
+    <property name="proxyInterfaces" value="com.mycompany.Person"/>
+    <!-- Use inner bean, not local reference to target -->
+    <property name="target">
+        <bean class="com.mycompany.PersonImpl">
+            <property name="name" value="Tony"/>
+            <property name="age" value="51"/>
+        </bean>
+    </property>
+    <property name="interceptorNames">
+        <list>
+            <value>myAdvisor</value>
+            <value>debugInterceptor</value>
+        </list>
+    </property>
+</bean>
+```
+这样做的好处是只有一个类型的对象Person：如果我们想要阻止应用程序上下文的用户获得对未建议对象的引用，或者需要避免Spring IoC 自动装配的任何歧义，那么这将是有用的。还有一个优点是ProxyFactoryBean定义是自包含的。但是，有时能够从工厂获得未建议的目标实际上可能是一个优势：例如，在某些测试场景中。
+
+#### 6.5.5. 代理课程
+
+想象一下，在上面的例子中，没有Person接口：我们需要建议一个Person没有实现任何业务接口的类。在这种情况下，您可以将Spring配置为使用CGLIB代理，而不是动态代理。只需将proxyTargetClass上面的ProxyFactoryBean上的属性设置 为true即可。虽然最好是编程接口而不是类，但在使用遗留代码时，建议不实现接口的类的能力会很有用。（一般来说，Spring不是规定性的。虽然它可以很容易地应用好的实践，但它避免强制使用特定的方法。）
+
+如果您愿意，即使您有接口，也可以在任何情况下强制使用CGLIB。
+
+CGLIB代理通过在运行时生成目标类的子类来工作。Spring将这个生成的子类配置为委托对原始目标的方法调用：子类用于实现Decorator模式，在建议中编织。
+
+CGLIB代理通常应对用户透明。但是，有一些问题需要考虑：
+
+- Final 方法无法建议，因为它们无法被覆盖。
+
+- 无需将CGLIB添加到类路径中。从Spring 3.2开始，CGLIB被重新打包并包含在spring-core JAR中。换句话说，基于CGLIB的AOP将像JDK动态代理一样“开箱即用”。
+
+CGLIB代理和动态代理之间的性能差异很小。从Spring 1.0开始，动态代理略快一些。但是，这可能会在未来发生变化。在这种情况下，绩效不应该是决定性的考虑因素。
+
+#### 6.5.6. 使用“全球”顾问
+通过在拦截器名称后附加星号，所有具有与星号前部分匹配的bean名称的顾问程序将添加到顾问程序链中。如果您需要添加一组标准的“全局”顾问，这可以派上用场：
+
+```xml
+<bean id="proxy" class="org.springframework.aop.framework.ProxyFactoryBean">
+    <property name="target" ref="service"/>
+    <property name="interceptorNames">
+        <list>
+            <value>global*</value>
+        </list>
+    </property>
+</bean>
+
+<bean id="global_debug" class="org.springframework.aop.interceptor.DebugInterceptor"/>
+<bean id="global_performance" class="org.springframework.aop.interceptor.PerformanceMonitorInterceptor"/>
+
+```
+
 ### 6.6. 简明的代理定义
+特别是在定义事务代理时，最终可能会有许多类似的代理定义。使用父bean和子bean定义以及内部bean定义可以产生更清晰，更简洁的代理定义。
+
+首先为代理创建父，模板，bean定义：
+
+```xml
+<bean id="txProxyTemplate" abstract="true"
+        class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+    <property name="transactionManager" ref="transactionManager"/>
+    <property name="transactionAttributes">
+        <props>
+            <prop key="*">PROPAGATION_REQUIRED</prop>
+        </props>
+    </property>
+</bean>
+```
+这永远不会被实例化，所以可能实际上是不完整的。然后，每个需要创建的代理只是一个子bean定义，它将代理的目标包装为内部bean定义，因为目标永远不会单独使用。
+```xml
+<bean id="myService" parent="txProxyTemplate">
+    <property name="target">
+        <bean class="org.springframework.samples.MyServiceImpl">
+        </bean>
+    </property>
+</bean>
+```
+当然可以覆盖父模板的属性，例如在这种情况下，事务传播设置：
+
+```xml
+<bean id="mySpecialService" parent="txProxyTemplate">
+    <property name="target">
+        <bean class="org.springframework.samples.MySpecialServiceImpl">
+        </bean>
+    </property>
+    <property name="transactionAttributes">
+        <props>
+            <prop key="get*">PROPAGATION_REQUIRED,readOnly</prop>
+            <prop key="find*">PROPAGATION_REQUIRED,readOnly</prop>
+            <prop key="load*">PROPAGATION_REQUIRED,readOnly</prop>
+            <prop key="store*">PROPAGATION_REQUIRED</prop>
+        </props>
+    </property>
+</bean>
+```
+请注意，在上面的示例中，我们已使用abstract属性将父bean定义显式标记为 abstract， 如前所述，因此实际上可能无法实例化它。默认情况下，应用程序上下文（但不是简单的bean工厂）会预先实例化所有单例。因此，重要的是（至少对于单例bean）如果你有一个（父）bean定义，你只打算用作模板，并且这个定义指定了一个类，你必须确保将abstract 属性设置为true，否则应用程序上下文实际上会尝试预先实例化它。
 ### 6.7. 使用ProxyFactory以编程方式创建AOP代理
+使用Spring以编程方式创建AOP代理很容易。这使您可以使用Spring AOP而不依赖于Spring IoC。
+
+以下清单显示了为目标对象创建代理，其中包含一个拦截器和一个顾问程序。目标对象实现的接口将自动代理：
+
+```java?linenums
+ProxyFactory factory = new ProxyFactory(myBusinessInterfaceImpl);
+factory.addAdvice(myMethodInterceptor);
+factory.addAdvisor(myAdvisor);
+MyBusinessInterface tb = (MyBusinessInterface) factory.getProxy();
+```
+第一步是构造一个类型的对象 org.springframework.aop.framework.ProxyFactory。您可以使用目标对象创建它，如上例所示，或者指定要在备用构造函数中代理的接口。
+
+您可以添加建议（使用拦截器作为一种特殊的建议）和/或顾问，并在ProxyFactory的生命周期中对它们进行操作。如果添加IntroductionInterceptionAroundAdvisor，则可以使代理实现其他接口。
+
+ProxyFactory上有一些便利方法（继承自AdvisedSupport），它允许您添加其他建议类型，例如before和throws建议。AdvisedSupport是ProxyFactory和ProxyFactoryBean的超类。
+
+```
+在大多数应用程序中，将AOP代理创建与IoC框架集成是最佳实践。我们建议您通常使用AOP从Java代码外部化配置。
+```
 ### 6.8. 操纵Advice对象
+但是，您创建AOP代理，您可以使用该org.springframework.aop.framework.Advised界面操作它们 。任何AOP代理都可以转换为此接口，无论它实现哪个其他接口。该界面包括以下方法：
+
+```java?linenums
+Advisor[] getAdvisors();
+
+void addAdvice(Advice advice) throws AopConfigException;
+
+void addAdvice(int pos, Advice advice) throws AopConfigException;
+
+void addAdvisor(Advisor advisor) throws AopConfigException;
+
+void addAdvisor(int pos, Advisor advisor) throws AopConfigException;
+
+int indexOf(Advisor advisor);
+
+boolean removeAdvisor(Advisor advisor) throws AopConfigException;
+
+void removeAdvisor(int index) throws AopConfigException;
+
+boolean replaceAdvisor(Advisor a, Advisor b) throws AopConfigException;
+
+boolean isFrozen();
+```
+该getAdvisors()方法将为已添加到工厂的每个顾问程序，拦截器或其他建议类型返回一个顾问程序。如果添加了Advisor，则此索引处返回的顾问程序将是您添加的对象。如果您添加了一个拦截器或其他建议类型，Spring将把它包装在一个带有切入点的顾问程序中，该切入点总是返回true。因此，如果您添加了一个MethodInterceptor，则为此索引返回的顾问程序将DefaultPointcutAdvisor返回您的 MethodInterceptor和一个匹配所有类和方法的切入点。
+
+这些addAdvisor()方法可用于添加任何Advisor。通常，持有切入点和建议的顾问将是通用的DefaultPointcutAdvisor，可以与任何建议或切入点一起使用（但不适用于介绍）。
+
+默认情况下，即使创建了代理，也可以添加或删除顾问程序或拦截器。唯一的限制是无法添加或删除介绍顾问，因为工厂的现有代理不会显示界面更改。（您可以从工厂获取新代理以避免此问题。）
+
+将AOP代理转换为Advised接口并检查和操作其建议的简单示例：
+```java?linenums
+Advised advised = (Advised) myObject;
+Advisor[] advisors = advised.getAdvisors();
+int oldAdvisorCount = advisors.length;
+System.out.println(oldAdvisorCount + " advisors");
+
+// Add an advice like an interceptor without a pointcut
+// Will match all proxied methods
+// Can use for interceptors, before, after returning or throws advice
+advised.addAdvice(new DebugInterceptor());
+
+// Add selective advice using a pointcut
+advised.addAdvisor(new DefaultPointcutAdvisor(mySpecialPointcut, myAdvice));
+
+assertEquals("Added two advisors", oldAdvisorCount + 2, advised.getAdvisors().length);
+```
+```
+尽管毫无疑问是合法的使用案例，否则修改生产中业务对象的建议是否可行（没有双关语）是值得怀疑的。但是，它在开发中非常有用：例如，在测试中。我有时发现能够以拦截器或其他建议的形式添加测试代码非常有用，进入我想要测试的方法调用。（例如，建议可以进入为该方法创建的事务内部：例如，在标记事务以进行回滚之前运行SQL以检查数据库是否已正确更新。）
+```
+根据您创建代理的方式，您通常可以设置一个frozen标志，在这种情况下该Advised isFrozen()方法将返回true，并且任何通过添加或删除来修改建议的尝试都将导致AopConfigException。在某些情况下，冻结建议对象状态的能力很有用，例如，防止调用代码删除安全拦截器。如果已知不需要运行时建议修改，它也可以在Spring 1.1中使用以允许积极优化。
+
+
 ### 6.9. 使用“自动代理”工具
+到目前为止，我们已经考虑使用ProxyFactoryBean或类似的工厂bean 显式创建AOP代理。
+
+Spring还允许我们使用“自动代理”bean定义，它可以自动代理选定的bean定义。这是基于Spring“bean post processor”基础结构构建的，它可以在容器加载时修改任何bean定义。
+
+在此模型中，您在XML bean定义文件中设置了一些特殊的bean定义来配置自动代理基础结构。这允许您只声明符合自动代理的目标：您不需要使用ProxyFactoryBean。
+
+有两种方法可以做到这一点：
+
+- 使用引用当前上下文中特定bean的自动代理创建器。
+
+- 自动代理创建的一个特例，值得单独考虑; 由源级元数据属性驱动的自动代理创建。
+
+#### 6.9.1. Autoproxy bean定义
+该org.springframework.aop.framework.autoproxy软件包提供以下标准自动代理创建程序。
+
+的BeanNameAutoProxyCreator
+BeanNameAutoProxyCreator该类是一个BeanPostProcessor自动为名称与文字值或通配符匹配的bean创建AOP代理的类。
+```xml
+<bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+    <property name="beanNames" value="jdk*,onlyJdk"/>
+    <property name="interceptorNames">
+        <list>
+            <value>myInterceptor</value>
+        </list>
+    </property>
+</bean>
+```
+与此同时ProxyFactoryBean，有一个interceptorNames属性而不是拦截器列表，以允许原型顾问的正确行为。命名为“拦截器”可以是顾问或任何建议类型。
+
+与通常的自动代理一样，使用的主要目的BeanNameAutoProxyCreator是将相同的配置一致地应用于多个对象，并且配置量最小。将声明性事务应用于多个对象是一种流行的选择。
+
+名称匹配的Bean定义（例如上例中的“jdkMyBean”和“onlyJdk”）是具有目标类的普通旧bean定义。AOP代理将由BeanNameAutoProxyCreator。自动创建。相同的建议将应用于所有匹配的bean。请注意，如果使用顾问程序（而不是上例中的拦截器），则切入点可能会以不同的方式应用于不同的bean。
+
+DefaultAdvisorAutoProxyCreator的
+一个更通用，功能更强大的自动代理创建者 DefaultAdvisorAutoProxyCreator。这将在当前上下文中自动应用符合条件的顾问程序，而无需在auto-proxy advisor的bean定义中包含特定的bean名称。它提供了一致配置和避免重复的相同优点BeanNameAutoProxyCreator。
+
+使用此机制涉及：
+
+- 指定DefaultAdvisorAutoProxyCreatorbean定义。
+
+- 在相同或相关的上下文中指定任意数量的顾问。请注意，这些 必须是顾问，而不仅仅是拦截器或其他建议。这是必要的，因为必须有一个切入点来评估，以检查每个建议对候选bean定义的合格性。
+
+该DefaultAdvisorAutoProxyCreator会自动评估包括在每个advisor中的切入点，看看有什么（如果有的话）的建议，应该适用于每个业务对象（如的“businessObject1”和“businessObject2”中的例子）。
+
+这意味着可以自动将任意数量的顾问程序应用于每个业务对象。如果任何顾问程序中的切入点与业务对象中的任何方法都不匹配，则不会代理该对象。当为新业务对象添加bean定义时，如有必要，它们将自动被代理。
+
+一般的自动代理具有使调用者或依赖者无法获得未建议的对象的优点。在此ApplicationContext上调用getBean（“businessObject1”）将返回AOP代理，而不是目标业务对象。（前面所示的“内在豆”成语也提供了这种好处。）
+
+```xml
+<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"/>
+
+<bean class="org.springframework.transaction.interceptor.TransactionAttributeSourceAdvisor">
+    <property name="transactionInterceptor" ref="transactionInterceptor"/>
+</bean>
+
+<bean id="customAdvisor" class="com.mycompany.MyAdvisor"/>
+
+<bean id="businessObject1" class="com.mycompany.BusinessObject1">
+    <!-- Properties omitted -->
+</bean>
+
+<bean id="businessObject2" class="com.mycompany.BusinessObject2"/>
+```
+DefaultAdvisorAutoProxyCreator如果要将相同的建议一致地应用于许多业务对象，则非常有用。基础结构定义到位后，您只需添加新的业务对象，而无需包含特定的代理配置。您还可以非常轻松地删除其他方面 - 例如，跟踪或性能监视方面 - 只需对配置进行最少的更改。
+
+DefaultAdvisorAutoProxyCreator支持过滤（使用命名约定，以便仅评估某些顾问程序，允许在同一工厂中使用多个，配置不同的AdvisorAutoProxyCreators）和排序。org.springframework.core.Ordered如果这是一个问题，顾问可以实施界面以确保正确的订购。上例中使用的TransactionAttributeSourceAdvisor具有可配置的订单值; 默认设置是无序的。
+
+
+
 ### 6.10. 使用TargetSources
+Spring提供了TargetSource的概念，在org.springframework.aop.TargetSource界面中表示 。该接口负责返回实现连接点的“目标对象”。在TargetSource 每一个AOP代理处理一个方法调用时实现请求一个目标实例。
+
+使用Spring AOP的开发人员通常不需要直接使用TargetSources，但这提供了支持池，热插拔和其他复杂目标的强大方法。例如，池化TargetSource可以使用池来管理实例，为每次调用返回不同的目标实例。
+
+如果未指定TargetSource，则使用包装本地对象的默认实现。每次调用都会返回相同的目标（正如您所期望的那样）。
+
+让我们看一下Spring提供的标准目标源，以及如何使用它们。
+
+```
+使用自定义目标源时，目标通常需要是原型而不是单例bean定义。这允许Spring在需要时创建新的目标实例。
+```
+#### 6.10.1. 热插拔目标源
+
+的org.springframework.aop.target.HotSwappableTargetSource存在允许同时允许调用者保持引用它，切换一个AOP代理的目标。
+
+更改目标源的目标会立即生效。这 HotSwappableTargetSource是线程安全的。
+
+您可以通过swap()HotSwappableTargetSource 上的方法更改目标，如下所示：
+
+```java?linenums
+HotSwappableTargetSource swapper = (HotSwappableTargetSource) beanFactory.getBean("swapper");
+Object oldTarget = swapper.swap(newTarget);
+
+```
+所需的XML定义如下所示：
+
+```xml
+<bean id="initialTarget" class="mycompany.OldTarget"/>
+
+<bean id="swapper" class="org.springframework.aop.target.HotSwappableTargetSource">
+    <constructor-arg ref="initialTarget"/>
+</bean>
+
+<bean id="swappable" class="org.springframework.aop.framework.ProxyFactoryBean">
+    <property name="targetSource" ref="swapper"/>
+</bean>
+
+```
+上面的swap()调用更改了可交换bean的目标。持有对该bean的引用的客户端将不知道该更改，但会立即开始命中新目标。
+
+虽然这个例子没有添加任何建议 - 并且没有必要添加建议来使用TargetSource- 当然任何建议TargetSource都可以与任意建议一起使用。
+#### 6.10.2. 汇集目标来源
+使用池化目标源为无状态会话EJB提供了类似的编程模型，其中维护了相同实例的池，方法调用将释放池中的空闲对象。
+
+Spring池和SLSB池之间的一个重要区别是Spring池可以应用于任何POJO。与Spring一样，此服务可以以非侵入方式应用。
+
+Spring为Commons Pool 2.2提供了开箱即用的支持，它提供了一个相当有效的池实现。您需要在应用程序的类路径上使用commons-pool Jar才能使用此功能。也可以子类化 org.springframework.aop.target.AbstractPoolingTargetSource以支持任何其他池化API。
+
+```
+Commons Pool 1.5+也受支持，但在Spring Framework 4.2中已弃用。
+```
+示例配置如下所示
+```xml
+<bean id="businessObjectTarget" class="com.mycompany.MyBusinessObject"
+        scope="prototype">
+    ... properties omitted
+</bean>
+
+<bean id="poolTargetSource" class="org.springframework.aop.target.CommonsPool2TargetSource">
+    <property name="targetBeanName" value="businessObjectTarget"/>
+    <property name="maxSize" value="25"/>
+</bean>
+
+<bean id="businessObject" class="org.springframework.aop.framework.ProxyFactoryBean">
+    <property name="targetSource" ref="poolTargetSource"/>
+    <property name="interceptorNames" value="myInterceptor"/>
+</bean>
+```
+请注意，目标对象 - 示例中的“businessObjectTarget” - 必须是原型。这允许PoolingTargetSource实现创建目标的新实例以根据需要增长池。AbstractPoolingTargetSource有关其属性的信息，请参阅javadocs 和您希望使用的具体子类：“maxSize”是最基本的，并且始终保证存在。
+
+在这种情况下，“myInterceptor”是需要在同一IoC上下文中定义的拦截器的名称。但是，没有必要指定拦截器来使用池。如果您只想要池化，而没有其他建议，请不要设置interceptorNames属性。
+
+可以配置Spring以便能够将任何池化对象转换为 org.springframework.aop.target.PoolingConfig接口，从而通过介绍公开有关池的配置和当前大小的信息。你需要定义一个像这样的顾问：
+
+```xml
+<bean id="poolConfigAdvisor" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+    <property name="targetObject" ref="poolTargetSource"/>
+    <property name="targetMethod" value="getPoolingConfigMixin"/>
+</bean>
+
+```
+通过在AbstractPoolingTargetSource类上调用便捷方法获得此顾问程序 ，因此使用MethodInvokingFactoryBean。此顾问程序的名称（此处为“poolConfigAdvisor”）必须位于ProxyFactoryBean中的拦截器名称列表中，以暴露池化对象。
+
+演员表如下：
+
+```java?linenums
+PoolingConfig conf = (PoolingConfig) beanFactory.getBean("businessObject");
+System.out.println("Max pool size is " + conf.getMaxSize());
+```
+```
+通常不需要池化无状态服务对象。我们不认为它应该是默认选择，因为大多数无状态对象自然是线程安全的，并且如果缓存资源，实例池是有问题的。
+```
+使用自动代理可以实现更简单的池化。可以设置任何自动代理创建者使用的TargetSource。
+
+#### 6.10.3. 原型目标来源
+设置“原型”目标源类似于池化TargetSource。在这种情况下，将在每次方法调用时创建目标的新实例。虽然在现代JVM中创建新对象的成本并不高，但是连接新对象（满足其IoC依赖性）的成本可能更高。因此，如果没有充分的理由，你不应该使用这种方法。
+
+为此，您可以poolTargetSource按如下方式修改上面显示的定义。（为了清楚起见，我也更改了名称。）
+```xml
+<bean id="prototypeTargetSource" class="org.springframework.aop.target.PrototypeTargetSource">
+    <property name="targetBeanName" ref="businessObjectTarget"/>
+</bean>
+```
+只有一个属性：目标bean的名称。TargetSource实现中使用继承来确保一致的命名。与池化目标源一样，目标bean必须是原型bean定义。
+
+#### 6.10.4. ThreadLocal目标源
+ThreadLocal如果您需要为每个传入请求创建一个对象（每个线程），目标源很有用。a的概念ThreadLocal提供了一个JDK范围的工具，可以在线程旁边透明地存储资源。设置a ThreadLocalTargetSource与其他类型的目标源所解释的几乎相同：
+```xml
+<bean id="threadlocalTargetSource" class="org.springframework.aop.target.ThreadLocalTargetSource">
+    <property name="targetBeanName" value="businessObjectTarget"/>
+</bean>
+```
+```
+ThreadLocals在多线程和多类加载器环境中错误地使用它们时会遇到严重问题（可能导致内存泄漏）。应该总是考虑将threadlocal包装在其他类中，而不是直接使用它ThreadLocal自己（当然在包装类中除外）。此外，应始终记住正确设置和取消设置（后者仅涉及调用 ThreadLocal.set(null)）线程本地的资源。在任何情况下都应该进行取消设置，因为不取消设置可能会导致有问题的行为。Spring的ThreadLocal支持为您完成此操作，应始终考虑使用ThreadLocals而不使用其他正确的处理代码。
+```
+
 ### 6.11. 定义新的Advice类型
+Spring AOP旨在可扩展。虽然拦截实现策略目前在内部使用，但除了围绕建议的开箱即用拦截，之前，抛出建议和返回建议之后，还可以支持任意建议类型。
+
+该org.springframework.aop.framework.adapter软件包是一个SPI软件包，允许在不改变核心框架的情况下添加对新的自定义建议类型的支持。自定义Advice类型的唯一约束是它必须实现 org.aopalliance.aop.Advice标记接口。
+
+org.springframework.aop.framework.adapter有关更多信息，请参阅javadocs。
 ## 7. 无安全性
 ### 7.1. 用例
 ### 7.2. JSR 305元注释
