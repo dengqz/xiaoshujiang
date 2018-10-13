@@ -6984,7 +6984,338 @@ List<Integer> primesGreaterThanTen = (List<Integer>) parser.parseExpression(
         "#primes.?[#this>10]").getValue(context);
 ```
 #### 4.4.12. 功能
+您可以通过注册可在表达式字符串中调用的用户定义函数来扩展SpEL。该功能通过注册EvaluationContext。
+
+```java?linenums
+Method method = ...;
+
+EvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
+context.setVariable("myFunction", method);
+```
+例如，给定一个反转字符串的实用方法如下所示：
+```java?linenums
+public abstract class StringUtils {
+
+    public static String reverseString(String input) {
+        StringBuilder backwards = new StringBuilder(input.length());
+        for (int i = 0; i < input.length(); i++)
+            backwards.append(input.charAt(input.length() - 1 - i));
+        }
+        return backwards.toString();
+    }
+}
+```
+然后可以如下注册和使用上述方法：
+```java?linenums
+ExpressionParser parser = new SpelExpressionParser();
+
+EvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
+context.setVariable("reverseString",
+        StringUtils.class.getDeclaredMethod("reverseString", String.class));
+
+String helloWorldReversed = parser.parseExpression(
+        "#reverseString('hello')").getValue(context, String.class);
+```
+#### 4.4.13. Bean引用
+如果已使用bean解析器配置了评估上下文，则可以使用该@符号从表达式中查找bean 。
+
+```java?linenums
+ExpressionParser parser = new SpelExpressionParser();
+StandardEvaluationContext context = new StandardEvaluationContext();
+context.setBeanResolver(new MyBeanResolver());
+
+// This will end up calling resolve(context,"foo") on MyBeanResolver during evaluation
+Object bean = parser.parseExpression("@foo").getValue(context);
+```
+要访问工厂bean本身，bean名称应该以&符号为前缀。
+```java?linenums
+ExpressionParser parser = new SpelExpressionParser();
+StandardEvaluationContext context = new StandardEvaluationContext();
+context.setBeanResolver(new MyBeanResolver());
+
+// This will end up calling resolve(context,"&foo") on MyBeanResolver during evaluation
+Object bean = parser.parseExpression("&foo").getValue(context);
+```
+#### 4.4.14. 三元运算符（If-Then-Else）
+您可以使用三元运算符在表达式中执行if-then-else条件逻辑。一个最小的例子是：
+
+```java?linenums
+String falseString = parser.parseExpression(
+        "false ? 'trueExp' : 'falseExp'").getValue(String.class);
+
+```
+在这种情况下，boolean false导致返回字符串值'falseExp'。一个更现实的例子如下所示。
+```java?linenums
+parser.parseExpression("Name").setValue(societyContext, "IEEE");
+societyContext.setVariable("queryName", "Nikola Tesla");
+
+expression = "isMember(#queryName)? #queryName + ' is a member of the ' " +
+        "+ Name + ' Society' : #queryName + ' is not a member of the ' + Name + ' Society'";
+
+String queryResultString = parser.parseExpression(expression)
+        .getValue(societyContext, String.class);
+// queryResultString = "Nikola Tesla is a member of the IEEE Society"
+```
+另请参阅Elvis运算符的下一节，了解三元运算符的更短语法。
+
+#### 4.4.15. 猫王运营商
+Elvis运算符是三元运算符语法的缩写，用于 Groovy语言。使用三元运算符语法，您通常必须重复两次变量，例如：
+
+```java?linenums
+String name = "Elvis Presley";
+String displayName = (name != null ? name : "Unknown");
+```
+相反，您可以使用Elvis运算符，该运算符的名称与Elvis的发型相似。
+
+```java?linenums
+ExpressionParser parser = new SpelExpressionParser();
+
+String name = parser.parseExpression("name?:'Unknown'").getValue(String.class);
+System.out.println(name);  // 'Unknown'
+```
+这是一个更复杂的例子。
+
+```java?linenums
+ExpressionParser parser = new SpelExpressionParser();
+EvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
+
+Inventor tesla = new Inventor("Nikola Tesla", "Serbian");
+String name = parser.parseExpression("Name?:'Elvis Presley'").getValue(context, tesla, String.class);
+System.out.println(name);  // Nikola Tesla
+
+tesla.setName(null);
+name = parser.parseExpression("Name?:'Elvis Presley'").getValue(context, tesla, String.class);
+System.out.println(name);  // Elvis Presley
+```
+#### 4.4.16. 安全导航操作员
+航行安全的操作使用，以避免NullPointerException与来自Groovy的 语言。通常，在引用对象时，可能需要在访问对象的方法或属性之前验证它是否为null。为避免这种情况，安全导航操作符将只返回null而不是抛出异常。
+```java?linenums
+ExpressionParser parser = new SpelExpressionParser();
+EvaluationContext context = SimpleEvaluationContext.forReadOnlyDataBinding().build();
+
+Inventor tesla = new Inventor("Nikola Tesla", "Serbian");
+tesla.setPlaceOfBirth(new PlaceOfBirth("Smiljan"));
+
+String city = parser.parseExpression("PlaceOfBirth?.City").getValue(context, tesla, String.class);
+System.out.println(city);  // Smiljan
+
+tesla.setPlaceOfBirth(null);
+city = parser.parseExpression("PlaceOfBirth?.City").getValue(context, tesla, String.class);
+System.out.println(city);  // null - does not throw NullPointerException!!!
+
+```
+```
+Elvis运算符可用于在表达式中应用默认值，例如在 @Value表达式中：
+
+@Value("#{systemProperties['pop3.port'] ?: 25}")
+pop3.port如果已定义，则将注入系统属性，否则注入25。
+
+
+```
+#### 4.4.17. 收藏选择
+
+Selection是一种强大的表达式语言功能，允许您通过从其条目中进行选择将某些源集合转换为另一个源集合。
+
+选择使用语法.?[selectionExpression]。这将过滤集合并返回包含原始元素子集的新集合。例如，选择将使我们能够轻松获得塞尔维亚发明家的名单：
+```java?linenums
+List<Inventor> list = (List<Inventor>) parser.parseExpression(
+        "Members.?[Nationality == 'Serbian']").getValue(societyContext);
+```
+可以在列表和地图上进行选择。在前一种情况下，针对每个单独的列表元素评估选择标准，而针对映射，针对每个映射条目（Java类型的对象）评估选择标准 Map.Entry。映射条目的键和值可作为选择中使用的属性进行访问。
+
+此表达式将返回一个新映射，其中包含原始映射中条目值小于27的那些元素。
+```java?linenums
+Map newMap = parser.parseExpression("map.?[value<27]").getValue();
+```
+除了返回所有选定元素外，还可以只检索第一个或最后一个值。为了获得与选择匹配的第一条目，语法是.^[selectionExpression]同时获得语法 的最后匹配选择 .$[selectionExpression]。
+#### 4.4.18. 收集投影
+投影允许集合驱动子表达式的评估，结果是新集合。投影的语法是.![projectionExpression]。最容易理解的例子是，假设我们有一个发明者名单，但想要他们出生的城市名单。实际上，我们想要为发明人列表中的每个条目评估“placeOfBirth.city”。使用投影：
+
+```java?linenums
+// returns ['Smiljan', 'Idvor' ]
+List placesOfBirth = (List)parser.parseExpression("Members.![placeOfBirth.city]");
+```
+地图也可用于驱动投影，在这种情况下，投影表达式将根据地图中的每个条目进行评估（表示为Java Map.Entry）。跨地图投影的结果是一个列表，其中包含对每个地图条目的投影表达式的评估。
+#### 4.4.19. 表达模板
+表达模板允许将文字文本与一个或多个评估块混合。每个评估块都用您可以定义的前缀和后缀字符分隔，一个常见的选择是#{ }用作分隔符。例如，
+```java?linenums
+String randomPhrase = parser.parseExpression(
+        "random number is #{T(java.lang.Math).random()}",
+        new TemplateParserContext()).getValue(String.class);
+
+// evaluates to "random number is 0.7038186818312008"
+
+```
+通过将文本文本'random number is '与在#{ }分隔符内部计算表达式的结果连接来计算字符串，在本例中是调用该random()方法的结果。该方法的第二个参数parseExpression() 是类型ParserContext。该ParserContext接口用于影响表达式的解析方式，以支持表达式模板功能。定义TemplateParserContext如下所示。
+
+```java?linenums
+public class TemplateParserContext implements ParserContext {
+
+    public String getExpressionPrefix() {
+        return "#{";
+    }
+
+    public String getExpressionSuffix() {
+        return "}";
+    }
+
+    public boolean isTemplate() {
+        return true;
+    }
+}
+```
 ### 4.5. 示例中使用的类
+Inventor.java
+```java?linenums
+package org.spring.samples.spel.inventor;
+
+import java.util.Date;
+import java.util.GregorianCalendar;
+
+public class Inventor {
+
+    private String name;
+    private String nationality;
+    private String[] inventions;
+    private Date birthdate;
+    private PlaceOfBirth placeOfBirth;
+
+    public Inventor(String name, String nationality) {
+        GregorianCalendar c= new GregorianCalendar();
+        this.name = name;
+        this.nationality = nationality;
+        this.birthdate = c.getTime();
+    }
+
+    public Inventor(String name, Date birthdate, String nationality) {
+        this.name = name;
+        this.nationality = nationality;
+        this.birthdate = birthdate;
+    }
+
+    public Inventor() {
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    public Date getBirthdate() {
+        return birthdate;
+    }
+
+    public void setBirthdate(Date birthdate) {
+        this.birthdate = birthdate;
+    }
+
+    public PlaceOfBirth getPlaceOfBirth() {
+        return placeOfBirth;
+    }
+
+    public void setPlaceOfBirth(PlaceOfBirth placeOfBirth) {
+        this.placeOfBirth = placeOfBirth;
+    }
+
+    public void setInventions(String[] inventions) {
+        this.inventions = inventions;
+    }
+
+    public String[] getInventions() {
+        return inventions;
+    }
+}
+```
+PlaceOfBirth.java
+```java?linenums
+package org.spring.samples.spel.inventor;
+
+public class PlaceOfBirth {
+
+    private String city;
+    private String country;
+
+    public PlaceOfBirth(String city) {
+        this.city=city;
+    }
+
+    public PlaceOfBirth(String city, String country) {
+        this(city);
+        this.country = country;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String s) {
+        this.city = s;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+}
+```
+Society.java
+```java?linenums
+package org.spring.samples.spel.inventor;
+
+import java.util.*;
+
+public class Society {
+
+    private String name;
+
+    public static String Advisors = "advisors";
+    public static String President = "president";
+
+    private List<Inventor> members = new ArrayList<Inventor>();
+    private Map officers = new HashMap();
+
+    public List getMembers() {
+        return members;
+    }
+
+    public Map getOfficers() {
+        return officers;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public boolean isMember(String name) {
+        for (Inventor inventor : members) {
+            if (inventor.getName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+}
+```
 ## 5. 使用Spring进行面向方面的编程
 ### 5.1. 介绍
 ### 5.2. @AspectJ支持
