@@ -10140,13 +10140,1003 @@ Spring AOP旨在可扩展。虽然拦截实现策略目前在内部使用，但�
 
 org.springframework.aop.framework.adapter有关更多信息，请参阅javadocs。
 ## 7. 无安全性
+尽管Java不允许使用其类型系统表示null安全性，但Spring Framework现在在org.springframework.lang包中提供以下注释以声明API和字段的可空性：
+
+- @NonNull注释，其中特定参数，返回值或字段不能null（参数和返回值不需要where @NonNullApi和@NonNullFieldsapply）。
+
+- @Nullable具体参数，返回值或字段可以是的注释null。
+
+- @NonNullApi 包级别的注释声明非null作为参数和返回值的默认行为。
+
+- @NonNullFields 包级别的注释声明非null作为字段的默认行为。
+
+Spring Framework利用这些注释，但它们也可以在任何基于Spring的Java项目中使用，以声明空安全API和可选的空安全字段。尚未支持泛型类型参数，varargs和数组元素可空性，但应在即将发布的版本中，请参阅SPR-15942以获取最新信息。预计可以在Spring Framework版本之间微调可空性声明，包括次要版本。方法体内使用的类型的可为空性超出了此功能的范围。
+```
+Reactor或Spring Data等库提供了利用此功能的空安全API。
+```
+
 ### 7.1. 用例
+除了提供Spring Framework API可空性的显式声明之外，IDE（例如IDEA或Eclipse）可以使用这些注释向Java开发人员提供与null安全相关的有用警告，以避免NullPointerException 在运行时。
+
+它们还用于使Kotlin项目中的Spring API安全无效，因为Kotlin本身支持null安全性。Kotlin支持文档中提供了更多详细信息。
+
+
 ### 7.2. JSR 305元注释
+Spring注释是使用JSR 305注释进行元 注释的（一种休眠但广泛传播的JSR）。JSR 305元注释允许像IDEA或Kotlin这样的工具供应商以通用方式提供空安全支持，而无需对Spring注释进行硬编码支持。
+
+没有必要也不建议在项目类路径中添加JSR 305依赖项以利用Spring null安全API。只有像使用空安全注解在他们的代码库基于Spring的库项目应该增加 com.google.code.findbugs:jsr305:3.0.2与compileOnly摇篮配置或Maven provided范围，以避免编译警告。
 ## 8. 数据缓冲区和编解码器
 ### 8.1. 介绍
+该DataBuffer接口定义了字节缓冲器的抽象。引入它的主要原因java.nio.ByteBuffer是Netty ，而不是使用标准。Netty不使用ByteBuffer，而是提供ByteBuf替代品。Spring DataBuffer是一个简单的抽象ByteBuf，也可以在非Netty平台上使用（即Servlet 3.1+）。
+
+
 ### 8.2. DataBufferFactory
+该DataBufferFactory报价功能来分配新的数据缓冲区，以及包装的现有数据。这些allocate方法分配一个具有默认或给定容量的新数据缓冲区。虽然DataBuffer实施需求会随着需求的增长而缩减，但如果知道的话，提前提供容量会更有效。这些wrap方法修饰现有ByteBuffer或字节数组。包装不涉及分配：它只是用DataBuffer 实现来装饰给定的数据。
+
+有两种实现DataBufferFactory：NettyDataBufferFactory它用于Netty平台，例如Reactor Netty。另一个实现，DefaultDataBufferFactory用于其他平台，例如Servlet 3.1+服务器。
+
+
 ### 8.3. DataBuffer接口
+该DataBuffer界面类似于ByteBuffer，但提供了许多优势。与Netty类似ByteBuf，DataBuffer抽象提供独立的读写位置。这与JDK不同ByteBuffer，后者只显示读取和写入的一个位置，以及flip()在两个I / O操作之间切换的单独操作。通常，以下不变量适用于读取位置，写入位置和容量：
+```
+0 <= read position <= write position <= capacity
+```
+当从中读取字节时DataBuffer，根据从缓冲器读取的数据量自动更新读取位置。类似地，当向其写入字节时DataBuffer，写入位置会根据写入缓冲区的数据量进行更新。此外，写入数据时，的容量DataBuffer会自动扩展，就像StringBuilder， ArrayList和类似的类型。
+
+除了读取和上述写入功能性，DataBuffer也有方法来查看一个（一片）缓冲液作为ByteBuffer，InputStream或OutputStream。另外，它提供了确定给定字节索引的方法。
+
+有两种实现DataBuffer：NettyDataBuffer它用于Netty平台，例如Reactor Netty。另一个实现，DefaultDataBuffer用于其他平台，例如Servlet 3.1+服务器。
+#### 8.3.1. PooledDataBuffer
+这PooledDataBuffer是一个扩展，DataBuffer它添加了引用计数的方法。该retain方法将引用计数增加1。该release方法将计数减少一，并在计数达到0时释放缓冲区的内存。这两种方法都与引用计数有关，这种机制将在下面说明。
+
+请注意，它DataBufferUtils提供了用于释放和保留池化数据缓冲区的有用实用方法。这些方法采用plain DataBuffer作为参数，但只调用retain或者release传递的数据缓冲区是实例PooledDataBuffer。
+
+参考计数
+引用计数不是Java中的常用技术; 它在其他编程语言（如Object C和C ++）中更为常见。就其本身而言，引用计数并不复杂：它主要涉及跟踪应用于对象的引用数。a的引用计数PooledDataBuffer从1开始，通过调用递增retain，并通过调用递减release。只要缓冲区的引用计数大于0，缓冲区就不会被释放。当数字减少到0时，实例将被释放。实际上，这意味着缓冲区捕获的保留内存将返回到内存池，准备用于将来的分配。
+
+通常，访问a的最后一个组件DataBuffer负责释放它。使用Spring，有两种组件可以释放缓冲区：解码器和传输器。解码器负责将缓冲流转换为其他类型（请参阅编解码器传输负责通过网络边界发送缓冲区，通常作为HTTP消息。这意味着，如果为了将它们放入出站HTTP消息（即客户端请求或服务器端响应）而分配数据缓冲区，则不必释放它们。此规则的另一个结果是，如果您分配的数据缓冲区不会在正文中结束，例如由于抛出异常，您将不得不自行释放它们。以下代码段显示了DataBuffer处理抛出异常的方法时的典型使用方案：
+
+```java?linenums
+DataBufferFactory factory = ...
+DataBuffer buffer = factory.allocateBuffer(); 
+boolean release = true; 
+try {
+    writeDataToBuffer(buffer); 
+    putBufferInHttpBody(buffer);
+    release = false; 
+}
+finally {
+    if (release) {
+        DataBufferUtils.release(buffer); 
+    }
+}
+
+private void writeDataToBuffer(DataBuffer buffer) throws IOException { 
+    ...
+}
+
+```
+	分配新缓冲区。
+布尔标志指示是否应释放分配的缓冲区。
+此示例方法将数据加载到缓冲区中。注意，该方法可以抛出一个IOException，因此需要一个finally块来释放缓冲区。
+如果没有发生异常，我们将release标志切换为，false因为缓冲区现在将被释放，作为通过网络发送HTTP正文的一部分。
+如果确实发生了异常，则标志仍设置为true，缓冲区将在此处释放。
+#### 8.3.2. DataBufferUtils
+DataBufferUtils包含对数据缓冲区进行操作的各种实用方法。它包含用于读取方法Flux的DataBuffer从一个物体InputStream或NIO Channel和方法用于写入数据缓冲器Flux向一个OutputStream或Channel。 DataBufferUtils还公开retain和release其在普通操作的方法DataBuffer 的实例（以使铸件的PooledDataBuffer不必需的）。
+
+另外，DataBufferUtils公开compose，将数据缓冲区流合并为一个。例如，此方法可用于将整个HTTP正文转换为单个缓冲区（以及来自该a String，或InputStream）。在处理较旧的阻塞API时，这尤其有用。但请注意，这会将整个主体置于内存中，因此比纯流式解决方案使用更多内存。
+
+
 ### 编解码器
+该org.springframework.core.codec包包含两个主要的抽象，用于将字节流转换为对象流，反之亦然。这Encoder是一个策略接口，它将对象流编码为数据缓冲区的输出流。的Decoder正好相反：它原来的数据缓冲区的一个流引入对象流。注意，解码器实例需要考虑引用计数。
+
+弹簧带有一个宽阵列的默认编解码器，能够从/向转换的String， ByteBuffer，字节阵列，并且还编解码器，支持编组库如JAXB和Jackson（与杰克逊2.9+为非阻塞解析支持）。在Spring WebFlux的上下文中，编解码器用于将请求主体转换为 @RequestMapping参数，或将返回类型转换为发送回客户端的响应主体。默认编解码器在WebFluxConfigurationSupport类中配置，并且可以通过覆盖configureHttpMessageCodecs从该类继承的时间来轻松更改。有关在WebFlux中使用编解码器的更多信息，请参阅本节。
+
+
 ## 9. 附录
 ### 9.1. XML模式
+附录的这一部分列出了与核心容器相关的XML模式。
+
+#### 9.1.1. util模式
+顾名思义，util标签处理常见的实用程序配置问题，例如配置集合，引用常量等。要在util模式中使用标记，您需要在Spring XML配置文件的顶部包含以下前导码; 下面的代码段中的文本引用了正确的架构，以便util您可以使用命名空间中的标记。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:util="http://www.springframework.org/schema/util" xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"> <!-- bean definitions here -->
+
+</beans>
+```
+<UTIL：常数/>
+之前...
+```xml
+<bean id="..." class="...">
+    <property name="isolation">
+        <bean id="java.sql.Connection.TRANSACTION_SERIALIZABLE"
+                class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean" />
+    </property>
+</bean>
+```
+上面的配置使用Spring FactoryBean实现，将 bean FieldRetrievingFactoryBean的isolation属性值设置为java.sql.Connection.TRANSACTION_SERIALIZABLE常量的值。这一切都很好，但它有点冗长，并且（不必要地）将Spring的内部管道暴露给最终用户。
+
+以下基于XML Schema的版本更简洁，并清楚地表达了开发人员的意图（'注入此常量值'），它只是更好地读取。
+
+```xml
+<bean id="..." class="...">
+    <property name="isolation">
+        <util:constant static-field="java.sql.Connection.TRANSACTION_SERIALIZABLE"/>
+    </property>
+</bean>
+```
+从字段值设置bean属性或构造函数arg
+FieldRetrievingFactoryBean 是一个FactoryBean检索static或非静态字段值的。它通常用于检索public static final常量，然后可以使用它来为另一个bean设置属性值或构造函数arg。
+
+static通过使用staticField 属性，在下面找到一个显示字段如何暴露 的示例：
+```xml
+<bean id="myField"
+        class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean">
+    <property name="staticField" value="java.sql.Connection.TRANSACTION_SERIALIZABLE"/>
+</bean>
+```
+还有一个便利用法表单，其中static字段被指定为bean名称：
+
+```xml
+<bean id="java.sql.Connection.TRANSACTION_SERIALIZABLE"
+        class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean"/>
+```
+这确实意味着bean ID不再有任何选择（因此引用它的任何其他bean也必须使用这个更长的名称），但这个表单定义非常简洁，并且非常方便用作内部bean，因为不必为bean引用指定id：
+
+```xml
+<bean id="..." class="...">
+    <property name="isolation">
+        <bean id="java.sql.Connection.TRANSACTION_SERIALIZABLE"
+                class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean" />
+    </property>
+</bean>
+```
+也可以访问另一个bean的非静态（实例）字段，如FieldRetrievingFactoryBean 该类的API文档中所述 。
+
+在Spring中将枚举值作为属性或构造函数参数注入到bean中非常容易，因为您实际上不需要做任何事情或了解有关Spring内部的任何内容（甚至是关于类的内容 FieldRetrievingFactoryBean）。让我们看一个例子，看看注入枚举值是多么容易; 考虑这个枚举：
+```java?linenums
+package javax.persistence;
+
+public enum PersistenceContextType {
+
+    TRANSACTION,
+    EXTENDED
+}
+
+```
+现在考虑一个类型的setter PersistenceContextType：
+
+```java?linenums
+package example;
+
+public class Client {
+
+    private PersistenceContextType persistenceContextType;
+
+    public void setPersistenceContextType(PersistenceContextType type) {
+        this.persistenceContextType = type;
+    }
+}
+```
+和相应的bean定义：
+
+```xml
+<bean class="example.Client">
+    <property name="persistenceContextType" value="TRANSACTION"/>
+</bean>
+```
+<UTIL：属性路径/>
+之前...
+```xml
+<!-- target bean to be referenced by name -->
+<bean id="testBean" class="org.springframework.beans.TestBean" scope="prototype">
+    <property name="age" value="10"/>
+    <property name="spouse">
+        <bean class="org.springframework.beans.TestBean">
+            <property name="age" value="11"/>
+        </bean>
+    </property>
+</bean>
+
+<!-- will result in 10, which is the value of property 'age' of bean 'testBean' -->
+<bean id="testBean.age" class="org.springframework.beans.factory.config.PropertyPathFactoryBean"/>
+```
+上面的配置使用Spring FactoryBean实现， PropertyPathFactoryBean创建一个int名为bean的bean（类型）testBean.age，其值等于bean 的age属性testBean。
+
+之后...
+
+```xml
+<!-- target bean to be referenced by name -->
+<bean id="testBean" class="org.springframework.beans.TestBean" scope="prototype">
+    <property name="age" value="10"/>
+    <property name="spouse">
+        <bean class="org.springframework.beans.TestBean">
+            <property name="age" value="11"/>
+        </bean>
+    </property>
+</bean>
+
+<!-- will result in 10, which is the value of property 'age' of bean 'testBean' -->
+<util:property-path id="name" path="testBean.age"/>
+
+```
+标签path属性的值<property-path/>遵循表单 beanName.beanProperty。
+
+使用<util：property-path />设置bean属性或构造函数参数
+PropertyPathFactoryBean是一个FactoryBean评估给定目标对象的属性路径的。可以直接指定目标对象，也可以通过bean名称指定目标对象。然后，该值可以在另一个bean定义中用作属性值或构造函数参数。
+
+这是一个通过名称对另一个bean使用路径的示例：
+```xml
+// target bean to be referenced by name
+<bean id="person" class="org.springframework.beans.TestBean" scope="prototype">
+    <property name="age" value="10"/>
+    <property name="spouse">
+        <bean class="org.springframework.beans.TestBean">
+            <property name="age" value="11"/>
+        </bean>
+    </property>
+</bean>
+
+// will result in 11, which is the value of property 'spouse.age' of bean 'person'
+<bean id="theAge"
+        class="org.springframework.beans.factory.config.PropertyPathFactoryBean">
+    <property name="targetBeanName" value="person"/>
+    <property name="propertyPath" value="spouse.age"/>
+</bean>
+```
+在此示例中，将针对内部bean评估路径：
+
+```xml
+<!-- will result in 12, which is the value of property 'age' of the inner bean -->
+<bean id="theAge"
+        class="org.springframework.beans.factory.config.PropertyPathFactoryBean">
+    <property name="targetObject">
+        <bean class="org.springframework.beans.TestBean">
+            <property name="age" value="12"/>
+        </bean>
+    </property>
+    <property name="propertyPath" value="age"/>
+</bean>
+```
+还有一个快捷方式表单，其中bean名称是属性路径。
+
+```xml
+<!-- will result in 10, which is the value of property 'age' of bean 'person' -->
+<bean id="person.age"
+        class="org.springframework.beans.factory.config.PropertyPathFactoryBean"/>
+```
+这个表单确实意味着bean的名称没有选择。对它的任何引用也必须使用相同的id，即路径。当然，如果用作内部bean，则根本不需要引用它：
+```xml
+<bean id="..." class="...">
+    <property name="age">
+        <bean id="person.age"
+                class="org.springframework.beans.factory.config.PropertyPathFactoryBean"/>
+    </property>
+</bean>
+```
+结果类型可以在实际定义中具体设置。对于大多数用例来说，这不是必需的，但对某些用例可能有用。有关此功能的更多信息，请参阅Javadocs。
+
+<UTIL：属性/>
+之前...
+```xml
+<!-- creates a java.util.Properties instance with values loaded from the supplied location -->
+<bean id="jdbcConfiguration" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+    <property name="location" value="classpath:com/foo/jdbc-production.properties"/>
+</bean>
+
+```
+上面的配置使用Spring FactoryBean实现， PropertiesFactoryBean实例化一个java.util.Properties具有从提供的Resource位置加载的值的实例）。
+
+之后...
+```xml
+<!-- creates a java.util.Properties instance with values loaded from the supplied location -->
+<util:properties id="jdbcConfiguration" location="classpath:com/foo/jdbc-production.properties"/>
+```
+<UTIL：列表/>
+之前...
+```xml
+<!-- creates a java.util.List instance with values loaded from the supplied 'sourceList' -->
+<bean id="emails" class="org.springframework.beans.factory.config.ListFactoryBean">
+    <property name="sourceList">
+        <list>
+            <value>pechorin@hero.org</value>
+            <value>raskolnikov@slums.org</value>
+            <value>stavrogin@gov.org</value>
+            <value>porfiry@gov.org</value>
+        </list>
+    </property>
+</bean>
+```
+上面的配置使用了一个Spring FactoryBean实现，ListFactoryBean用来创建一个java.util.List初始化的实例，该 实例取自提供的值sourceList。
+
+之后...
+```xml
+
+
+
+<!-- creates a java.util.List instance with the supplied values -->
+<util:list id="emails">
+    <value>pechorin@hero.org</value>
+    <value>raskolnikov@slums.org</value>
+    <value>stavrogin@gov.org</value>
+    <value>porfiry@gov.org</value>
+</util:list>
+```
+您还List可以通过使用元素list-class上的属性显式控制将实例化和填充的确切类型<util:list/>。例如，如果我们确实需要java.util.LinkedList实例化，我们可以使用以下配置：
+
+```xml
+<util:list id="emails" list-class="java.util.LinkedList">
+    <value>jackshaftoe@vagabond.org</value>
+    <value>eliza@thinkingmanscrumpet.org</value>
+    <value>vanhoek@pirate.org</value>
+    <value>d'Arcachon@nemesis.org</value>
+</util:list>
+
+```
+如果未list-class提供任何属性List，则容器将选择实现。
+
+<UTIL：地图/>
+之前
+```xml
+<!-- creates a java.util.Map instance with values loaded from the supplied 'sourceMap' -->
+<bean id="emails" class="org.springframework.beans.factory.config.MapFactoryBean">
+    <property name="sourceMap">
+        <map>
+            <entry key="pechorin" value="pechorin@hero.org"/>
+            <entry key="raskolnikov" value="raskolnikov@slums.org"/>
+            <entry key="stavrogin" value="stavrogin@gov.org"/>
+            <entry key="porfiry" value="porfiry@gov.org"/>
+        </map>
+    </property>
+</bean>
+```
+上面的配置使用Spring FactoryBean实现， MapFactoryBean来创建一个java.util.Map用提供的键值对初始化的实例'sourceMap'。
+
+之后...
+```xml
+<!-- creates a java.util.Map instance with the supplied key-value pairs -->
+<util:map id="emails">
+    <entry key="pechorin" value="pechorin@hero.org"/>
+    <entry key="raskolnikov" value="raskolnikov@slums.org"/>
+    <entry key="stavrogin" value="stavrogin@gov.org"/>
+    <entry key="porfiry" value="porfiry@gov.org"/>
+</util:map>
+```
+您还Map可以通过使用元素'map-class'上的属性显式控制将实例化和填充的确切类型<util:map/>。例如，如果我们确实需要java.util.TreeMap实例化，我们可以使用以下配置：
+```xml
+<util:map id="emails" map-class="java.util.TreeMap">
+    <entry key="pechorin" value="pechorin@hero.org"/>
+    <entry key="raskolnikov" value="raskolnikov@slums.org"/>
+    <entry key="stavrogin" value="stavrogin@gov.org"/>
+    <entry key="porfiry" value="porfiry@gov.org"/>
+</util:map>
+```
+如果未'map-class'提供任何属性Map，则容器将选择实现。
+
+<UTIL：集/>
+之前...
+```xml
+<!-- creates a java.util.Set instance with values loaded from the supplied 'sourceSet' -->
+<bean id="emails" class="org.springframework.beans.factory.config.SetFactoryBean">
+    <property name="sourceSet">
+        <set>
+            <value>pechorin@hero.org</value>
+            <value>raskolnikov@slums.org</value>
+            <value>stavrogin@gov.org</value>
+            <value>porfiry@gov.org</value>
+        </set>
+    </property>
+</bean>
+```
+上面的配置使用了一个Spring FactoryBean实现，SetFactoryBean用来创建一个java.util.Set初始化的实例，该 实例取自提供的值'sourceSet'。
+
+之后...
+
+```xml
+<!-- creates a java.util.Set instance with the supplied values -->
+<util:set id="emails">
+    <value>pechorin@hero.org</value>
+    <value>raskolnikov@slums.org</value>
+    <value>stavrogin@gov.org</value>
+    <value>porfiry@gov.org</value>
+</util:set>
+```
+您还Set可以通过使用元素'set-class'上的属性显式控制将实例化和填充的确切类型<util:set/>。例如，如果我们确实需要java.util.TreeSet实例化，我们可以使用以下配置：
+
+```xml<util:set id="emails" set-class="java.util.TreeSet">
+    <value>pechorin@hero.org</value>
+    <value>raskolnikov@slums.org</value>
+    <value>stavrogin@gov.org</value>
+    <value>porfiry@gov.org</value>
+</util:set>
+```
+如果未'set-class'提供任何属性Set，则容器将选择实现。
+
+#### 9.1.2. aop架构
+该aop标签处理配置所有的东西AOP在Spring：这包括Spring自己的基于代理的AOP框架和Spring与AspectJ的AOP框架集成。这些标签在题为面向方面的Spring编程一章中全面介绍。
+
+为了完整性，要在aop模式中使用标记，您需要在Spring XML配置文件的顶部有以下前导码; 以下代码段中的文本引用了正确的架构，以便aop命名空间中的标记可供您使用。
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:aop="http://www.springframework.org/schema/aop" xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd"> <!-- bean definitions here -->
+
+</beans>
+```
+#### 9.1.3. 上下文模式
+该context标签处理ApplicationContext，涉及到管道的配置-也就是说，通常不是在春天做了很多琐碎的工作的豆类是重要的终端用户，而是豆类，如BeanfactoryPostProcessors。以下代码段引用了正确的架构，以便context命名空间中的标记可供您使用。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context" xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd"> <!-- bean definitions here -->
+
+</beans>
+
+```
+<属性占位符/>
+此元素激活${…​}占位符的替换，根据指定的属性文件（作为Spring资源位置）进行解析。这个元素是一个PropertyPlaceholderConfigurer为你设置的便利机制; 如果您需要更多控制权 PropertyPlaceholderConfigurer，请明确自己定义一个。
+
+<注解配置/>
+激活Spring基础结构，以便在bean类中检测各种注释：Spring @Required和 @Autowired，以及JSR 250 @PostConstruct， @PreDestroy和@Resource（如果可用），以及JPA @PersistenceContext和 @PersistenceUnit（如果可用）。或者，您可以选择BeanPostProcessors明确激活这些注释的个人。
+```
+此元素不激活Spring的处理 @Transactional注解。<tx:annotation-driven/>为此目的使用 元素。
+```
+<组件的扫描/>
+此元素在基于注释的容器配置中进行了详细说明。
+
+<载荷 - 时间 - 韦弗/>
+在Spring Framework中使用AspectJ进行加载时编织时详细介绍了此元素。
+
+<弹簧配置/>
+在使用AspectJ依赖注入域对象与Spring中详细说明了这个元素。
+
+<mbean的出口/>
+配置基于MBean导出的注释中详细介绍了此元素。
+#### 9.1.4. bean架构
+最后但并非最不重要的是，我们在beans架构中有标签。这些标签自框架开始以来一直在Spring中使用。beans这里没有显示模式中各种标记的示例，因为它们在依赖关系和配置中得到了非常全面的介绍 （实际上在整个章节中）。
+
+请注意，可以向<bean/>XML定义添加零个或多个键/值对。如果有的话，使用这些额外的元数据完成的工作完全取决于您自己的自定义逻辑（因此，如果您正在编写自己的自定义标记，通常只能使用，如附录标题XML Schema Authoring中所述）。
+
+在下面找到一个<meta/>在周围环境中的标记示例<bean/> （请注意，没有任何逻辑来解释它，元数据实际上是无用的）。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="foo" class="x.y.Foo">
+        <meta key="cacheName" value="foo"/>
+        <property name="name" value="Rick"/>
+    </bean>
+
+</beans>
+```
+在上面的示例中，您将假设有一些逻辑将使用bean定义并使用提供的元数据设置一些缓存基础结构。
+
+
 ### 9.2. XML Schema Authoring
+#### 9.2.1. 介绍
+从版本2.0开始，Spring为基于模式的Spring XML格式扩展提供了一种机制，用于定义和配置bean。本节专门介绍如何编写自己的自定义XML bean定义解析器以及将这些解析器集成到Spring IoC容器中。
+
+为了便于使用模式感知XML编辑器创建配置文件，Spring的可扩展XML配置机制基于XML Schema。如果您不熟悉Spring标准Spring发行版附带的当前XML配置扩展，请首先阅读标题为[xsd-config]的附录。
+
+可以通过以下（相对）简单步骤来创建新的XML配置扩展：
+
+- 创建 XML模式来描述您的自定义元素。
+
+- 编写自定义NamespaceHandler实现（这是一个简单的步骤，不用担心）。
+
+- 编码一个或多个BeanDefinitionParser实现（这是完成实际工作的地方）。
+
+- 使用Spring 注册上述工件（这也是一个简单的步骤）。
+
+以下是对这些步骤的描述。例如，我们将创建一个XML扩展（自定义XML元素），允许我们以简单的方式配置类型的对象 SimpleDateFormat（从java.text包中）。完成后，我们将能够定义类型的bean定义，SimpleDateFormat如下所示：
+```xml
+<myns:dateformat id="dateFormat"
+    pattern="yyyy-MM-dd HH:mm"
+    lenient="true"/>
+```
+（不要担心这个例子非常简单;之后会有更详细的例子。第一个简单示例的目的是引导您完成所涉及的基本步骤。）
+
+#### 9.2.2. 编写架构
+
+创建一个用于Spring的IoC容器的XML配置扩展，首先要创建一个XML Schema来描述扩展。以下是我们将用于配置SimpleDateFormat对象的模式。
+
+```xml
+<!-- myns.xsd (inside package org/springframework/samples/xml) -->
+
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="http://www.mycompany.com/schema/myns"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        xmlns:beans="http://www.springframework.org/schema/beans"
+        targetNamespace="http://www.mycompany.com/schema/myns"
+        elementFormDefault="qualified"
+        attributeFormDefault="unqualified">
+
+    <xsd:import namespace="http://www.springframework.org/schema/beans"/>
+
+    <xsd:element name="dateformat">
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="beans:identifiedType">
+                    <xsd:attribute name="lenient" type="xsd:boolean"/>
+                    <xsd:attribute name="pattern" type="xsd:string" use="required"/>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>
+```
+（强调的行包含可识别的所有标记的扩展基础（意味着它们具有id将用作容器中的bean标识符的属性）。我们能够使用此属性，因为我们导入了Spring提供的 'beans'命名空间。 ）
+
+上述模式将用于SimpleDateFormat使用该<myns:dateformat/>元素直接在XML应用程序上下文文件中配置对象。
+
+```xml
+
+<myns:dateformat id="dateFormat"
+    pattern="yyyy-MM-dd HH:mm"
+    lenient="true"/>
+```
+请注意，在我们创建基础结构类之后，上面的XML片段基本上与以下XML片段完全相同。换句话说，我们只是在容器中创建一个bean，由'dateFormat'类型 名称标识SimpleDateFormat，并设置了几个属性。
+
+```xml
+<bean id="dateFormat" class="java.text.SimpleDateFormat">
+    <constructor-arg value="yyyy-HH-dd HH:mm"/>
+    <property name="lenient" value="true"/>
+</bean>
+```
+```xml
+	
+基于模式的创建配置格式的方法允许与具有模式感知XML编辑器的IDE紧密集成。使用正确创作的架构，您可以使用自动完成功能让用户在枚举中定义的几个配置选项之间进行选择。
+```
+#### 9.2.3. 编码NamespaceHandler
+
+除了模式之外，我们还需要一个NamespaceHandler解析Spring解析配置文件时遇到的特定命名空间的所有元素。本 NamespaceHandler应该在我们的情况下采取的解析照顾myns:dateformat 元素。
+
+该NamespaceHandler接口是它的特点只有三个方法很简单：
+
+- init()- 允许初始化，NamespaceHandler并在使用处理程序之前由Spring调用
+
+- BeanDefinition parse(Element, ParserContext) - 当Spring遇到顶级元素（未嵌套在bean定义或不同的命名空间中）时调用。此方法可以自己注册bean定义和/或返回bean定义。
+
+- BeanDefinitionHolder decorate(Node, BeanDefinitionHolder, ParserContext) - 当Spring遇到不同命名空间的属性或嵌套元素时调用。例如，Spring支持的开箱即用范围使用一个或多个bean定义的装饰 。我们首先突出一个简单的例子，不使用装饰，之后我们将在一个更高级的例子中展示装饰。
+
+
+虽然完全可以NamespaceHandler为整个命名空间编写自己的代码（因此提供解析命名空间中每个元素的代码），但是通常情况是Spring XML配置文件中的每个顶级XML元素都会导致单个bean定义（在我们的例子中，单个<myns:dateformat/> 元素导致单个SimpleDateFormatbean定义）。Spring提供了许多支持此方案的便捷类。在这个例子中，我们将使用NamespaceHandlerSupport该类：
+
+```java?linenums
+package org.springframework.samples.xml;
+
+import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
+
+public class MyNamespaceHandler extends NamespaceHandlerSupport {
+
+    public void init() {
+        registerBeanDefinitionParser("dateformat", new SimpleDateFormatBeanDefinitionParser());
+    }
+
+}
+```
+细心的读者会注意到这个类中实际上并没有很多解析逻辑。确实...... NamespaceHandlerSupport班上有一个内置的授权概念。它支持注册任何数量的BeanDefinitionParser 实例，当它需要解析其命名空间中的元素时，它将委托给它们。这种干净的关注分离允许NamespaceHandler处理其命名空间中所有自定义元素的解析编排，同时委托BeanDefinitionParsers执行XML解析的繁琐工作; 这意味着每个BeanDefinitionParser都只包含解析单个自定义元素的逻辑，我们可以在下一步中看到
+
+#### 9.2.4. BeanDefinitionParser
+BeanDefinitionParser如果NamespaceHandler遇到已映射到特定bean定义解析器的类型的XML元素（'dateformat'在本例中为），则将使用A. 换句话说，BeanDefinitionParser它负责解析模式中定义的一个不同的顶级XML元素。在解析器中，我们可以访问XML元素（以及它的子元素），以便我们可以解析自定义XML内容，如以下示例所示：
+```java?linenums
+package org.springframework.samples.xml;
+
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.xml.AbstractSingleBeanDefinitionParser;
+import org.springframework.util.StringUtils;
+import org.w3c.dom.Element;
+
+import java.text.SimpleDateFormat;
+
+public class SimpleDateFormatBeanDefinitionParser extends AbstractSingleBeanDefinitionParser { 
+
+    protected Class getBeanClass(Element element) {
+        return SimpleDateFormat.class; 
+    }
+
+    protected void doParse(Element element, BeanDefinitionBuilder bean) {
+        // this will never be null since the schema explicitly requires that a value be supplied
+        String pattern = element.getAttribute("pattern");
+        bean.addConstructorArg(pattern);
+
+        // this however is an optional property
+        String lenient = element.getAttribute("lenient");
+        if (StringUtils.hasText(lenient)) {
+            bean.addPropertyValue("lenient", Boolean.valueOf(lenient));
+        }
+    }
+
+}
+```
+我们使用Spring提供的方法AbstractSingleBeanDefinitionParser来处理很多创建单个 的基本grunt工作BeanDefinition。
+我们为AbstractSingleBeanDefinitionParser超类提供了我们单个BeanDefinition代表的类型。
+在这个简单的例子中，这就是我们需要做的一切。我们的single的创建 BeanDefinition由AbstractSingleBeanDefinitionParser超类处理，bean定义的唯一标识符的提取和设置也是如此。
+
+#### 9.2.5. 注册处理程序和架构
+编码完成了！剩下要做的就是以某种方式使Spring XML解析基础设施了解我们的自定义元素; 我们通过namespaceHandler在两个专用属性文件中注册我们的自定义和自定义XSD文件来完成此 操作。这些属性文件都放在'META-INF'应用程序的目录中，例如，可以与JAR文件中的二进制类一起分发。Spring XML解析基础结构将通过使用这些特殊属性文件自动获取新扩展，其格式如下所述。
+
+'META-INF / spring.handlers'
+调用的属性文件'spring.handlers'包含XML Schema URI到命名空间处理程序类的映射。因此，对于我们的示例，我们需要编写以下内容：
+```
+http\://www.mycompany.com/schema/myns=org.springframework.samples.xml.MyNamespaceHandler
+```
+（该':'字符是Java属性格式的有效分隔符，因此':'URI中的 字符需要使用反斜杠进行转义。）
+
+键值对的第一部分（键）是与自定义命名空间扩展关联的URI，并且需要与'targetNamespace' 自定义XSD架构中指定的属性值完全匹配。
+
+'META-INF / spring.schemas'
+调用的属性文件'spring.schemas'包含XML模式位置（在XML文件中使用模式作为'xsi:schemaLocation'属性的一部分的模式声明中的引用）到类路径资源的映射。需要此文件来防止Spring绝对必须使用EntityResolver需要Internet访问权限的默认值来检索模式文件。如果在此属性文件中指定映射，Spring将在类路径上搜索模式（在本例 'myns.xsd'中为'org.springframework.samples.xml'包）：
+
+```
+http\://www.mycompany.com/schema/myns/myns.xsd=org/springframework/samples/xml/myns.xsd
+
+```
+这样做的结果是，我们鼓励您将类似路径上的XSD文件NamespaceHandler和BeanDefinitionParser类一起部署。
+#### 9.2.6. 在Spring XML配置中使用自定义扩展
+使用自己实现的自定义扩展与使用Spring提供的“自定义”扩展之一没有什么不同。下面是一个使用<dateformat/>Spring XML配置文件中前面步骤中开发的自定义元素的示例。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:myns="http://www.mycompany.com/schema/myns"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.mycompany.com/schema/myns http://www.mycompany.com/schema/myns/myns.xsd">
+
+    <!-- as a top-level bean -->
+    <myns:dateformat id="defaultDateFormat" pattern="yyyy-MM-dd HH:mm" lenient="true"/>
+
+    <bean id="jobDetailTemplate" abstract="true">
+        <property name="dateFormat">
+            <!-- as an inner bean -->
+            <myns:dateformat pattern="HH:mm MM-dd-yyyy"/>
+        </property>
+    </bean>
+
+</beans>
+```
+#### 9.2.7. 更实用的例子
+在下面找到一些更加丰富的自定义XML扩展示例。
+
+在自定义标记中嵌套自定义标记
+此示例说明了如何编写满足以下配置目标所需的各种工件：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:foo="http://www.foo.com/schema/component"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.foo.com/schema/component http://www.foo.com/schema/component/component.xsd">
+
+    <foo:component id="bionic-family" name="Bionic-1">
+        <foo:component name="Mother-1">
+            <foo:component name="Karate-1"/>
+            <foo:component name="Sport-1"/>
+        </foo:component>
+        <foo:component name="Rock-1"/>
+    </foo:component>
+
+</beans>
+```
+上述配置实际上将自定义扩展嵌套在彼此之内。由上述<foo:component/>元素实际配置的Component 类是类（直接显示在下面）。注意Component该类如何不公开该'components'属性的setter方法; 这使得Component使用setter注入为类配置bean定义变得困难（或者更不可能）。
+
+```java?linenums
+package com.foo;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Component {
+
+    private String name;
+    private List<Component> components = new ArrayList<Component> ();
+
+    // mmm, there is no setter method for the 'components'
+    public void addComponent(Component component) {
+        this.components.add(component);
+    }
+
+    public List<Component> getComponents() {
+        return components;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+}
+```
+此问题的典型解决方案是创建一个FactoryBean公开属性的setter属性的自定义'components'。
+
+```java?linenums
+package com.foo;
+
+import org.springframework.beans.factory.FactoryBean;
+
+import java.util.List;
+
+public class ComponentFactoryBean implements FactoryBean<Component> {
+
+    private Component parent;
+    private List<Component> children;
+
+    public void setParent(Component parent) {
+        this.parent = parent;
+    }
+
+    public void setChildren(List<Component> children) {
+        this.children = children;
+    }
+
+    public Component getObject() throws Exception {
+        if (this.children != null && this.children.size() > 0) {
+            for (Component child : children) {
+                this.parent.addComponent(child);
+            }
+        }
+        return this.parent;
+    }
+
+    public Class<Component> getObjectType() {
+        return Component.class;
+    }
+
+    public boolean isSingleton() {
+        return true;
+    }
+
+}
+```
+这一切都非常好，并且确实很好地工作，但是向最终用户公开了很多Spring管道。我们要做的是编写一个隐藏所有Spring管道的自定义扩展。如果我们坚持前面描述的步骤，我们将首先创建XSD架构来定义自定义标签的结构。
+
+```xml
+
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<xsd:schema xmlns="http://www.foo.com/schema/component"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="http://www.foo.com/schema/component"
+        elementFormDefault="qualified"
+        attributeFormDefault="unqualified">
+
+    <xsd:element name="component">
+        <xsd:complexType>
+            <xsd:choice minOccurs="0" maxOccurs="unbounded">
+                <xsd:element ref="component"/>
+            </xsd:choice>
+            <xsd:attribute name="id" type="xsd:ID"/>
+            <xsd:attribute name="name" use="required" type="xsd:string"/>
+        </xsd:complexType>
+    </xsd:element>
+
+</xsd:schema>
+```
+然后我们将创建一个自定义NamespaceHandler。
+
+```java?linenums
+package com.foo;
+
+import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
+
+public class ComponentNamespaceHandler extends NamespaceHandlerSupport {
+
+    public void init() {
+        registerBeanDefinitionParser("component", new ComponentBeanDefinitionParser());
+    }
+
+}
+```
+接下来是自定义BeanDefinitionParser。请记住，我们正在创建的是 BeanDefinition描述a ComponentFactoryBean。
+
+```java?linenums
+package com.foo;
+
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.support.ManagedList;
+import org.springframework.beans.factory.xml.AbstractBeanDefinitionParser;
+import org.springframework.beans.factory.xml.ParserContext;
+import org.springframework.util.xml.DomUtils;
+import org.w3c.dom.Element;
+
+import java.util.List;
+
+public class ComponentBeanDefinitionParser extends AbstractBeanDefinitionParser {
+
+    protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+        return parseComponentElement(element);
+    }
+
+    private static AbstractBeanDefinition parseComponentElement(Element element) {
+        BeanDefinitionBuilder factory = BeanDefinitionBuilder.rootBeanDefinition(ComponentFactoryBean.class);
+        factory.addPropertyValue("parent", parseComponent(element));
+
+        List<Element> childElements = DomUtils.getChildElementsByTagName(element, "component");
+        if (childElements != null && childElements.size() > 0) {
+            parseChildComponents(childElements, factory);
+        }
+
+        return factory.getBeanDefinition();
+    }
+
+    private static BeanDefinition parseComponent(Element element) {
+        BeanDefinitionBuilder component = BeanDefinitionBuilder.rootBeanDefinition(Component.class);
+        component.addPropertyValue("name", element.getAttribute("name"));
+        return component.getBeanDefinition();
+    }
+
+    private static void parseChildComponents(List<Element> childElements, BeanDefinitionBuilder factory) {
+        ManagedList<BeanDefinition> children = new ManagedList<BeanDefinition>(childElements.size());
+        for (Element element : childElements) {
+            children.add(parseComponentElement(element));
+        }
+        factory.addPropertyValue("children", children);
+    }
+
+}
+
+```
+最后，需要在Spring XML基础结构中注册各种工件。
+
+```
+# in 'META-INF/spring.handlers'
+http\://www.foo.com/schema/component=com.foo.ComponentNamespaceHandler
+```
+```
+# in 'META-INF/spring.schemas'
+http\://www.foo.com/schema/component/component.xsd=com/foo/component.xsd
+```
+“普通”元素的自定义属性
+编写自己的自定义解析器和相关工件并不难，但有时候这不是正确的做法。考虑需要向现有bean定义添加元数据的场景。在这种情况下，您当然不希望自己编写自己的整个自定义扩展程序; 相反，您只想在现有bean定义元素中添加其他属性。
+
+通过另一个例子，假设您正在为服务对象定义bean定义的服务类（它不知道）正在访问集群 JCache，并且您希望确保在内部急切地启动命名的JCache实例周围的集群：
+
+```xml
+<bean id="checkingAccountService" class="com.foo.DefaultCheckingAccountService"
+        jcache:cache-name="checking.account">
+    <!-- other dependencies here... -->
+</bean>
+```
+我们要做的是BeanDefinition在'jcache:cache-name'解析属性时 创建另一个; BeanDefinition然后，这将为我们初始化命名的JCache。我们还将修改现有BeanDefinition的， 'checkingAccountService'以便它依赖于这个新的JCache初始化BeanDefinition。
+
+```java?linenums
+package com.foo;
+
+public class JCacheInitializer {
+
+    private String name;
+
+    public JCacheInitializer(String name) {
+        this.name = name;
+    }
+
+    public void initialize() {
+        // lots of JCache API calls to initialize the named cache...
+    }
+
+}
+```
+现在进入自定义扩展。首先，创建描述自定义属性的XSD架构（在这种情况下非常简单）。
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<xsd:schema xmlns="http://www.foo.com/schema/jcache"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="http://www.foo.com/schema/jcache"
+        elementFormDefault="qualified">
+
+    <xsd:attribute name="cache-name" type="xsd:string"/>
+
+</xsd:schema>
+
+```
+接下来，关联NamespaceHandler。
+```java?linenums
+package com.foo;
+
+import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
+
+public class JCacheNamespaceHandler extends NamespaceHandlerSupport {
+
+    public void init() {
+        super.registerBeanDefinitionDecoratorForAttribute("cache-name",
+            new JCacheInitializingBeanDefinitionDecorator());
+    }
+
+}
+```
+接下来，解析器。请注意，在这种情况下，因为我们要解析XML属性，所以我们编写的是一个BeanDefinitionDecorator而不是一个BeanDefinitionParser。
+
+```java?linenums
+package com.foo;
+
+import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.xml.BeanDefinitionDecorator;
+import org.springframework.beans.factory.xml.ParserContext;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Node;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class JCacheInitializingBeanDefinitionDecorator implements BeanDefinitionDecorator {
+
+    private static final String[] EMPTY_STRING_ARRAY = new String[0];
+
+    public BeanDefinitionHolder decorate(Node source, BeanDefinitionHolder holder,
+            ParserContext ctx) {
+        String initializerBeanName = registerJCacheInitializer(source, ctx);
+        createDependencyOnJCacheInitializer(holder, initializerBeanName);
+        return holder;
+    }
+
+    private void createDependencyOnJCacheInitializer(BeanDefinitionHolder holder,
+            String initializerBeanName) {
+        AbstractBeanDefinition definition = ((AbstractBeanDefinition) holder.getBeanDefinition());
+        String[] dependsOn = definition.getDependsOn();
+        if (dependsOn == null) {
+            dependsOn = new String[]{initializerBeanName};
+        } else {
+            List dependencies = new ArrayList(Arrays.asList(dependsOn));
+            dependencies.add(initializerBeanName);
+            dependsOn = (String[]) dependencies.toArray(EMPTY_STRING_ARRAY);
+        }
+        definition.setDependsOn(dependsOn);
+    }
+
+    private String registerJCacheInitializer(Node source, ParserContext ctx) {
+        String cacheName = ((Attr) source).getValue();
+        String beanName = cacheName + "-initializer";
+        if (!ctx.getRegistry().containsBeanDefinition(beanName)) {
+            BeanDefinitionBuilder initializer = BeanDefinitionBuilder.rootBeanDefinition(JCacheInitializer.class);
+            initializer.addConstructorArg(cacheName);
+            ctx.getRegistry().registerBeanDefinition(beanName, initializer.getBeanDefinition());
+        }
+        return beanName;
+    }
+
+}
+```
+最后，需要在Spring XML基础结构中注册各种工件。
+```
+# in 'META-INF/spring.handlers'
+http\://www.foo.com/schema/jcache=com.foo.JCacheNamespaceHandler
+```
+```
+# in 'META-INF/spring.schemas'
+http\://www.foo.com/schema/jcache/jcache.xsd=com/foo/jcache.xsd
+
+```
+
+
+
