@@ -8149,8 +8149,115 @@ public Object doConcurrentOperation(ProceedingJoinPoint pjp) throws Throwable {
 支持方面（"aBean"在这种情况下）的bean 当然可以配置和依赖注入，就像任何其他Spring bean一样。
 
 #### 5.3.2. 宣布切入点
+可以在<aop：config>元素内声明命名切入点，使切入点定义能够跨多个方面和顾问程序共享。
 
+表示服务层中任何业务服务执行的切入点可以定义如下：
+```xml
+<aop:config>
 
+    <aop:pointcut id="businessService"
+        expression="execution(* com.xyz.myapp.service.*.*(..))"/>
+
+</aop:config>
+```
+请注意，切入点表达式本身使用与@AspectJ支持中描述的相同的AspectJ切入点表达式语言。如果使用基于模式的声明样式，则可以引用切入点表达式中类型（@Aspects）中定义的命名切入点。定义上述切入点的另一种方法是：
+
+```xml
+
+<aop:config>
+
+    <aop:pointcut id="businessService"
+        expression="com.xyz.myapp.SystemArchitecture.businessService()"/>
+
+</aop:config>
+```
+假设您有共享公共切入点定义中SystemArchitecture描述的方面。
+
+在方面内部声明切入点与声明顶级切入点非常相似：
+```xml
+<aop:config>
+
+    <aop:aspect id="myAspect" ref="aBean">
+
+        <aop:pointcut id="businessService"
+            expression="execution(* com.xyz.myapp.service.*.*(..))"/>
+
+        ...
+
+    </aop:aspect>
+
+</aop:config>
+```
+在@AspectJ方面大致相同的方式，使用基于模式的定义样式声明的切入点可以收集连接点上下文。例如，以下切入点将'this'对象收集为连接点上下文并将其传递给建议：
+```xml
+<aop:config>
+
+    <aop:aspect id="myAspect" ref="aBean">
+
+        <aop:pointcut id="businessService"
+            expression="execution(* com.xyz.myapp.service.*.*(..)) &amp;&amp; this(service)"/>
+
+        <aop:before pointcut-ref="businessService" method="monitor"/>
+
+        ...
+
+    </aop:aspect>
+
+</aop:config>
+```
+必须通过包含匹配名称的参数来声明建议以接收收集的连接点上下文：
+```java?linenums
+public void monitor(Object service) {
+    ...
+}
+```
+当需要连接子表达式，&&是尴尬的XML文档中，所以关键字and，or和not可以代替使用&&，||和! 分别。例如，之前的切入点可能更好地写为：
+```xml
+<aop:config>
+
+    <aop:aspect id="myAspect" ref="aBean">
+
+        <aop:pointcut id="businessService"
+            expression="execution(* com.xyz.myapp.service..(..)) and this(service)"/>
+
+        <aop:before pointcut-ref="businessService" method="monitor"/>
+
+        ...
+    </aop:aspect>
+</aop:config>
+```
+请注意，以这种方式定义的切入点由其XML ID引用，不能用作命名切入点来形成复合切入点。因此，基于模式的定义样式中的命名切入点支持比@AspectJ样式提供的更有限。
+#### 5.3.3. 宣布建议
+对于@AspectJ样式，支持相同的五种建议类型，它们具有完全相同的语义。
+
+在建议之前
+在匹配的方法执行之前运行建议之前。它在<aop:aspect>使用<aop：before>元素内部声明 。
+
+```xml
+<aop:aspect id="beforeExample" ref="aBean">
+
+    <aop:before
+        pointcut-ref="dataAccessOperation"
+        method="doAccessCheck"/>
+
+    ...
+
+</aop:aspect>
+
+```
+这dataAccessOperation是在top（<aop:config>）级别定义的切入点的id 。要改为内联定义切入点，请使用pointcut-ref属性替换该pointcut属性：
+
+```xml
+<aop:aspect id="beforeExample" ref="aBean">
+
+    <aop:before
+        pointcut="execution(* com.xyz.myapp.dao.*.*(..))"
+        method="doAccessCheck"/>
+
+    ...
+
+</aop:aspect>
+```
 ### 5.4. 选择要使用的AOP声明样式
 ### 5.5. 混合方面类型
 ### 5.6. 代理机制
