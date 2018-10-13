@@ -8001,7 +8001,156 @@ public Object preProcessQueryPattern(ProceedingJoinPoint pjp,
 当在不同方面定义的两条建议都需要在同一个连接点运行时，除非您另行指定，否则执行顺序是未定义的。您可以通过指定优先级来控制执行顺序。这是通过在方法类中实现org.springframework.core.Ordered接口或使用注释对其进行Order注释来以常规Spring方式完成的。给定两个方面，从Ordered.getValue()（或注释值）返回较低值的方面具有较高的优先级。
 
 当在同一方面中定义的两条建议都需要在同一个连接点上运行时，排序是未定义的（因为没有办法通过反射为javac编译的类检索声明顺序）。考虑将这些建议方法折叠到每个方面类中每个连接点的一个建议方法中，或者将这些建议重构为单独的方面类 - 可以在方面级别进行排序。
+#### 5.2.5. 简介
+简介（在AspectJ中称为类型间声明）使方面能够声明建议对象实现给定接口，并代表这些对象提供该接口的实现。
+
+使用@DeclareParents注释进行介绍。此批注用于声明匹配类型具有新父级（因此名称）。例如，给定接口UsageTracked和该接口的实现DefaultUsageTracked，以下方面声明服务接口的所有实现者也实现UsageTracked接口。（例如，为了通过JMX公开统计信息。）
+```java?linenums
+@Aspect
+public class UsageTracking {
+
+    @DeclareParents(value="com.xzy.myapp.service.*+", defaultImpl=DefaultUsageTracked.class)
+    public static UsageTracked mixin;
+
+    @Before("com.xyz.myapp.SystemArchitecture.businessService() && this(usageTracked)")
+    public void recordUsage(UsageTracked usageTracked) {
+        usageTracked.incrementUseCount();
+    }
+
+}
+```
+要实现的接口由注释字段的类型确定。注释的 value属性@DeclareParents是AspectJ类型模式： - 任何匹配类型的bean都将实现UsageTracked接口。请注意，在上面示例的before advice中，服务bean可以直接用作UsageTracked接口的实现。如果以编程方式访问bean，您将编写以下内容：
+```java?linenums
+UsageTracked usageTracked = (UsageTracked) context.getBean("myService");
+```
+#### 5.2.6. Aspect实例化模型
+```
+（这是一个高级主题，所以如果你刚刚开始使用AOP，你可以安全地跳过它直到以后。）
+```
+默认情况下，应用程序上下文中的每个方面都有一个实例。AspectJ将其称为单例实例化模型。它可以与其他的生命周期定义方面： - Spring支持AspectJ的perthis和pertarget 实例化模型（percflow, percflowbelow,和pertypewithin目前不支持）。
+
+通过perthis在@Aspect 注释中指定子句来声明“perthis”方面。让我们看一个例子，然后我们将解释它是如何工作的。
+
+```java?linenums
+@Aspect("perthis(com.xyz.myapp.SystemArchitecture.businessService())")
+public class MyAspect {
+
+    private int someState;
+
+    @Before(com.xyz.myapp.SystemArchitecture.businessService())
+    public void recordServiceUsage() {
+        // ...
+    }
+
+}
+```
+该'perthis'子句的作用是为执行业务服务的每个唯一服务对象创建一个方面实例（每个唯一对象在由切入点表达式匹配的连接点处绑定到'this'）。方法实例是在第一次在服务对象上调用方法时创建的。当服务对象超出范围时，该方面超出范围。在创建方面实例之前，其中没有任何建议执行。一旦创建了方面实例，在其中声明的通知将在匹配的连接点处执行，但仅在服务对象是与此方面相关联的服务对象时执行。有关per子句的更多信息，请参阅AspectJ编程指南。
+
+该'pertarget'实例化样板工程完全相同的方式perthis，但在匹配的连接点，为每个唯一目标对象的一个方面的实例。
+#### 5.2.7. 例
+既然你已经看到了所有组成部分的工作方式，那就让我们把它们放在一起做一些有用的事情吧！
+
+由于并发问题（例如，死锁失败者），业务服务的执行有时会失败。如果重试该操作，则很可能在下一轮成功。对于适合在这种情况下重试的业务服务（幂等操作不需要回到用户进行冲突解决），我们希望透明地重试操作以避免客户端看到 PessimisticLockingFailureException。这是明确跨越服务层中的多个服务的要求，因此是通过方面实现的理想选择。
+
+因为我们想要重试操作，我们需要使用around建议，以便我们可以多次调用proceed。以下是基本方面实现的外观：
+
+```java?linenums
+@Aspect
+public class ConcurrentOperationExecutor implements Ordered {
+
+    private static final int DEFAULT_MAX_RETRIES = 2;
+
+    private int maxRetries = DEFAULT_MAX_RETRIES;
+    private int order = 1;
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
+    public int getOrder() {
+        return this.order;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
+    }
+
+    @Around("com.xyz.myapp.SystemArchitecture.businessService()")
+    public Object doConcurrentOperation(ProceedingJoinPoint pjp) throws Throwable {
+        int numAttempts = 0;
+        PessimisticLockingFailureException lockFailureException;
+        do {
+            numAttempts++;
+            try {
+                return pjp.proceed();
+            }
+            catch(PessimisticLockingFailureException ex) {
+                lockFailureException = ex;
+            }
+        } while(numAttempts <= this.maxRetries);
+        throw lockFailureException;
+    }
+
+}
+```
+请注意，方面实现了Ordered接口，因此我们可以将方面的优先级设置为高于事务通知（我们每次重试时都需要一个新的事务）。在maxRetries和order属性都可以在Spring中配置。主要行动发生在doConcurrentOperation周围的建议中。请注意，目前我们正在将重试逻辑应用于所有人businessService()s。我们试图继续进行，如果我们失败了，PessimisticLockingFailureException我们只需再试一次，除非我们已经用尽所有的重试尝试。
+
+相应的Spring配置是：
+```xml
+<aop:aspectj-autoproxy/>
+
+<bean id="concurrentOperationExecutor" class="com.xyz.myapp.service.impl.ConcurrentOperationExecutor">
+    <property name="maxRetries" value="3"/>
+    <property name="order" value="100"/>
+</bean>
+```
+为了优化方面以便它只重试幂等操作，我们可以定义一个 Idempotent注释：
+
+```java?linenums
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Idempotent {
+    // marker annotation
+}
+```
+并使用注释来注释服务操作的实现。对方面的更改仅重试幂等操作只涉及改进切入点表达式，以便只有@Idempotent操作匹配：
+
+```java?linenums
+@Around("com.xyz.myapp.SystemArchitecture.businessService() && " +
+        "@annotation(com.xyz.myapp.service.Idempotent)")
+public Object doConcurrentOperation(ProceedingJoinPoint pjp) throws Throwable {
+    ...
+}
+```
+
 ### 5.3. 基于模式的AOP支持
+如果您更喜欢基于XML的格式，那么Spring还支持使用新的“aop”命名空间标记定义方面。使用@AspectJ样式时，支持完全相同的切入点表达式和建议类型，因此在本节中我们将重点介绍新语法，并引用读者阅读上一节（@AspectJ支持）中的讨论以了解写作切入点表达式和建议参数的绑定。
+
+要使用本节中描述的aop命名空间标记，您需要按照基于XML模式的配置中的spring-aop描述导入 模式。有关 如何在命名空间中导入标记，请参阅AOP架构。aop
+
+在Spring配置中，所有aspect和advisor元素必须放在一个<aop:config>元素中（<aop:config>在应用程序上下文配置中可以有多个元素）。一个<aop:config>元素可以包含切入点，顾问和纵横元件（注意这些必须按照这个顺序进行声明）。
+```
+该<aop:config>风格的配置使得大量使用Spring的 自动代理机制。如果您已经通过使用BeanNameAutoProxyCreator或类似的方式使用显式自动代理，这可能会导致问题（例如建议不被编织） 。建议的使用模式是仅使用<aop:config>样式，或仅使用AutoProxyCreator样式。
+```
+#### 5.3.1. 宣布一个方面
+使用模式支持，方面只是在Spring应用程序上下文中定义为bean的常规Java对象。状态和行为在对象的字段和方法中捕获，切入点和建议信息在XML中捕获。
+
+使用<aop：aspect>元素声明方面，并使用以下ref属性引用辅助bean ：
+```xml
+<aop:config>
+    <aop:aspect id="myAspect" ref="aBean">
+        ...
+    </aop:aspect>
+</aop:config>
+
+<bean id="aBean" class="...">
+    ...
+</bean>
+```
+支持方面（"aBean"在这种情况下）的bean 当然可以配置和依赖注入，就像任何其他Spring bean一样。
+
+#### 5.3.2. 宣布切入点
+
+
 ### 5.4. 选择要使用的AOP声明样式
 ### 5.5. 混合方面类型
 ### 5.6. 代理机制
