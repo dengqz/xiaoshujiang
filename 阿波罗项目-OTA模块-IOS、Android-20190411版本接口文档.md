@@ -1,10 +1,3 @@
-
----
-title: 阿波罗项目-OTA模块-IOS、Android-20190411版本接口文档
-tags: 新建,模板,小书匠
-grammar_cjkRuby: true
----
-
 # IOS、Android端查询OTA审核单列表
 
 **简要描述：** 
